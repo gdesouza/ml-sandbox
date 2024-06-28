@@ -27,7 +27,7 @@ To run a game reading the input from a file, simply instantiate the object witho
 
 TODO
 
-- [] Save each execution into a replay file
+- [ ] Save each execution into a replay file
 
 #### From file
 

@@ -1,5 +1,6 @@
 import pygame
 import time
+import pandas
 
 
 class Coordinate:
@@ -9,6 +10,10 @@ class Coordinate:
 
     def __str__(self) -> str:
         return f"{self.x},{self.y}"
+    
+    def __add__(self, other):
+        return Coordinate(self.x+other.x, self.y+other.y)
+
 
 class Colour():
     BLACK = (0,0,0)
@@ -96,8 +101,67 @@ class Display:
                 (self.car.y > self.screen.height - self.car.h or self.car.y < 0)
 
 
-class Game:
+
+
+class FromKeyboard:
     def __init__(self) -> None:
+        self.reset_move()
+
+    def reset_move(self) -> None:
+        self.move = Coordinate(0,0)
+
+    def get_move(self) -> object:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    self.move.x = -5
+                elif event.key == pygame.K_RIGHT:
+                    self.move.x = 5
+                elif event.key == pygame.K_UP:
+                    self.move.y = -5
+                elif event.key == pygame.K_DOWN:
+                    self.move.y = 5
+
+            # This block will reset the increment after each move.
+            # If we don't do this, the car will keep moving making the 
+            # task a bit harder (and more interesting).
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    self.move.x = 0
+                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                    self.move.y = 0
+
+        return self.move
+
+
+class FromFile:
+    def __init__(self, filename) -> None:
+        # open file
+        self.reader = pandas.read_csv(filename,usecols=['move_x', 'move_y'], header=0)
+
+    def reset_move(self) -> None:
+        self.current_line = 1
+        line = self.reader.iloc[self.current_line]
+        print("move: ", line['move_x'],line['move_y'])
+        self.move = Coordinate(line['move_x'],line['move_y'])
+        print(self.move)
+
+    def get_move(self) -> object:
+        self.current_line += 1
+        if self.current_line >= self.reader.shape[0]:
+            return Coordinate(0,0)
+        line = self.reader.iloc[self.current_line]
+        self.move = Coordinate(line['move_x'],line['move_y'])
+
+        return self.move
+
+class Game:
+    def __init__(self, input=FromKeyboard()) -> None:
+        self.input = input
         self.display = Display()
         self.clock = pygame.time.Clock()
         self.framerate = 60
@@ -126,34 +190,12 @@ class Game:
 
     def start(self, execution_id=0) -> None:
         execution_id += 1
-        move = Coordinate(0, 0)
+        self.input.reset_move()
         result = None
         self.display.car.go_to(Coordinate(self.display.screen.width * 0.45,self.display.screen.height * 0.8))
         while not self.is_game_ended():
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
-
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        move.x = -5
-                    elif event.key == pygame.K_RIGHT:
-                        move.x = 5
-                    elif event.key == pygame.K_UP:
-                        move.y = -5
-                    elif event.key == pygame.K_DOWN:
-                        move.y = 5
-
-                # This block will reset the increment after each move.
-                # If we don't do this, the car will keep moving making the 
-                # task a bit harder (and more interesting).
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                        move.x = 0
-                    if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                        move.y = 0
             
+            move = self.input.get_move()
             self.display.car.x += move.x
             self.display.car.y += move.y
 

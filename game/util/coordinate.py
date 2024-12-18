@@ -9,6 +9,9 @@ class Coordinate:
     def __add__(self, other):
         return Coordinate(self.x+other.x, self.y+other.y)
     
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+    
 
 if __name__=='__main__':
     pass

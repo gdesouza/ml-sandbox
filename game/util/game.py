@@ -1,3 +1,5 @@
+from sys import stdout
+import random
 import pygame
 import time
 
@@ -7,7 +9,7 @@ from util.display import Display
 from util.inputs import FromKeyboard
 
 class Game:
-    def __init__(self, input=FromKeyboard()) -> None:
+    def __init__(self, input=FromKeyboard(), output=stdout) -> None:
         self.input = input
         self.display = Display()
         self.clock = pygame.time.Clock()
@@ -15,6 +17,8 @@ class Game:
         self.display.set_caption('Parking game')
         self._game_exit = False
         self.staleness_factor = 100
+        self.output = output
+        
         pygame.init()
 
     
@@ -41,7 +45,19 @@ class Game:
         self.input.reset_move()
         result = None
         stalled = 0
-        self.display.car.go_to(Coordinate(self.display.screen.width * 0.45,self.display.screen.height * 0.8))
+
+        print('Running demonstration ', execution_id)
+
+        initpos_x = random.randint(0, self.display.screen.width-50)
+        initpos_y = random.randint(0, self.display.screen.height-50)
+        self.display.car.go_to(Coordinate(initpos_x,initpos_y))
+        self.input.goto(initpos_x,initpos_y)
+
+        initpos_x = random.randint(0, self.display.screen.width-70)
+        initpos_y = random.randint(0, self.display.screen.height-70)
+        self.display.parking.go_to(Coordinate(initpos_x, initpos_y))
+        self.input.move_target(initpos_x, initpos_y)
+                               
         while not self.is_game_ended():
             
             move = self.input.get_move()
@@ -56,6 +72,8 @@ class Game:
                     time.sleep(1)
                     self.start(execution_id)
                     result = "failed"
+            else: 
+                stalled = 0
 
 
             self.render()
@@ -78,7 +96,7 @@ class Game:
             pygame.display.update()
             self.update_clock()
 
-            print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{move}")
+            print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{move}", file=self.output)
 
     def quit(self) -> None:
         pygame.quit()

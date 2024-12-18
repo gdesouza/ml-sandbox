@@ -38,13 +38,14 @@ This command will instantiate a game object and read the input from a file. You 
     game = Game(input=FromFile('replay_game_1.txt'))
 ```
 
-TODO
-
-- [ ] adsf 
+## TODO
 
 - [ ] Read file name from command arguments
+- [ ] Use RGB images for training
+- [ ] Use position control
+- [ ] Predict next x moves
 
-### Class Diagram
+## Class Diagram
 > _Install Markdown Preview to see the diagrams in VS Code_
 
 ```mermaid

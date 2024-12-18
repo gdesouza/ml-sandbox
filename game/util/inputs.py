@@ -75,10 +75,9 @@ class FromFile:
 
 class FromModel:
     def __init__(self, filename, init_pos_blue, init_pos_red) -> None:
-        device = accel_device()
         self.model = ContinuousPolicyNetwork(input_size=4, hidden_size=64, output_size=2)
         self.model.load_state_dict(torch.load(filename))
-        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=device)
+        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=accel_device())
         self.reset_move()
 
     def reset_move(self) -> None:
@@ -88,14 +87,14 @@ class FromModel:
     def goto(self, x, y) -> None:
         init_pos_red_x = self.initial_state[2]
         init_pos_red_y = self.initial_state[3]
-        self.initial_state = torch.tensor([x, y, init_pos_red_x, init_pos_red_y], dtype=torch.float32, device=torch.device("mps"))
+        self.initial_state = torch.tensor([x, y, init_pos_red_x, init_pos_red_y], dtype=torch.float32, device=accel_device())
         self.reset_move()
 
 
     def move_target(self, x, y) -> None:
         init_pos_blue_x = self.initial_state[0]
         init_pos_blue_y = self.initial_state[1]
-        self.initial_state = torch.tensor([init_pos_blue_x, init_pos_blue_y, x, y], dtype=torch.float32, device=torch.device("mps"))
+        self.initial_state = torch.tensor([init_pos_blue_x, init_pos_blue_y, x, y], dtype=torch.float32, device=accel_device())
         self.reset_move()
 
     def get_move(self) -> object:

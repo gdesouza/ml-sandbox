@@ -14,6 +14,7 @@ class Game:
         self.framerate = 60
         self.display.set_caption('Parking game')
         self._game_exit = False
+        self.staleness_factor = 100
         pygame.init()
 
     
@@ -39,12 +40,23 @@ class Game:
         execution_id += 1
         self.input.reset_move()
         result = None
+        stalled = 0
         self.display.car.go_to(Coordinate(self.display.screen.width * 0.45,self.display.screen.height * 0.8))
         while not self.is_game_ended():
             
             move = self.input.get_move()
             self.display.car.x += move.x
             self.display.car.y += move.y
+
+            if move == Coordinate(0,0):
+                stalled += 1
+                if stalled > self.staleness_factor:
+                    self.fail()
+                    pygame.display.update()
+                    time.sleep(1)
+                    self.start(execution_id)
+                    result = "failed"
+
 
             self.render()
 
@@ -59,7 +71,7 @@ class Game:
             if self.display.is_car_out_of_bounds():
                 self.fail()
                 pygame.display.update()
-                time.sleep(2)
+                time.sleep(1)
                 self.start(execution_id)
                 result = "failed"
 

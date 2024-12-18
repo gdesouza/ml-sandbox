@@ -1,6 +1,8 @@
 import pygame
 import pandas
+import torch
 from util.coordinate import Coordinate
+from util.model import ContinuousPolicyNetwork
 
 class FromKeyboard:
     def __init__(self) -> None:
@@ -57,3 +59,25 @@ class FromFile:
         self.move = Coordinate(line['move_x'],line['move_y'])
 
         return self.move
+    
+class FromModel:
+    def __init__(self, filename, init_pos_blue, init_pos_red) -> None:
+        self.model = ContinuousPolicyNetwork(input_size=4, hidden_size=64, output_size=2)
+        self.model.load_state_dict(torch.load(filename))
+        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32)
+        self.reset_move()
+
+    def reset_move(self) -> None:
+        self.state = torch.tensor(self.initial_state)
+        print("state reset: ", self.state)
+
+    def get_move(self) -> object:
+        self.model.eval()
+        with torch.no_grad():
+            next_move = self.model(self.state.unsqueeze(0))  # add batch dimension
+            next_move = torch.round(next_move)
+            self.state[0] = self.state[0] + next_move[0,0]
+            self.state[1] = self.state[1] + next_move[0,1]
+            self.move = Coordinate(next_move[0,0].item(),next_move[0,1].item())
+
+        return self.move 

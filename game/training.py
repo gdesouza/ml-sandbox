@@ -2,13 +2,15 @@ import sys
 import pandas as pd
 import torch
 import torch.nn as nn
-from datetime import datetime
 
 from util.model import ContinuousPolicyNetwork
 from util.acceleration import accel_device
 
 # Specify the training file path
 file_path = 'game_data'  # Replace with your actual file path
+
+num_epochs = 20
+
 
 def load_data(filename:str) -> pd.DataFrame:
     try:
@@ -27,14 +29,15 @@ def load_data(filename:str) -> pd.DataFrame:
     return df
 
 def train(X, y):
-    model = ContinuousPolicyNetwork(input_size=4, hidden_size=64, output_size=2)
+    
+    model = ContinuousPolicyNetwork()
+    model.train()  # set model to training mode
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
 
     dataset = torch.utils.data.TensorDataset(X, y)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=False)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=False)
 
-    num_epochs = 100
     for epoch in range(num_epochs):
         for batch_X, batch_Y in loader:
             optimizer.zero_grad()
@@ -42,7 +45,6 @@ def train(X, y):
             loss = criterion(pred, batch_Y)
             loss.backward()
             optimizer.step()
-        #if epoch % 100 == 0:
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item()}")
     
     return model

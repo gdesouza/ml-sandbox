@@ -75,14 +75,13 @@ class FromFile:
 
 class FromModel:
     def __init__(self, filename, init_pos_blue, init_pos_red) -> None:
-        self.model = ContinuousPolicyNetwork(input_size=4, hidden_size=64, output_size=2)
+        self.model = ContinuousPolicyNetwork()
         self.model.load_state_dict(torch.load(filename))
         self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=accel_device())
         self.reset_move()
 
     def reset_move(self) -> None:
         self.state = self.initial_state.clone().detach()
-        print("state reset: ", self.state)
 
     def goto(self, x, y) -> None:
         init_pos_red_x = self.initial_state[2]
@@ -101,8 +100,8 @@ class FromModel:
         self.model.eval()
         with torch.no_grad():
             next_move = self.model(self.state.unsqueeze(0))  # add batch dimension
-            next_move = torch.round(next_move)
-            self.state[0] = self.state[0] + next_move[0,0]
+            next_move = torch.round(next_move) #+ 10*torch.rand(next_move.shape, device=accel_device())
+            self.state[0] = self.state[0] + next_move[0,0] 
             self.state[1] = self.state[1] + next_move[0,1]
             self.move = Coordinate(next_move[0,0].item(),next_move[0,1].item())
 

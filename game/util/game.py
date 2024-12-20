@@ -1,5 +1,7 @@
-from sys import stdout
+import signal
+
 import random
+import sys
 import pygame
 import time
 
@@ -8,8 +10,14 @@ from util.coordinate import Coordinate
 from util.display import Display
 from util.inputs import FromKeyboard
 
+def signal_handler(sig, frame):
+    print('Game over.')
+    sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
+
 class Game:
-    def __init__(self, input=FromKeyboard(), output=stdout) -> None:
+    def __init__(self, input=FromKeyboard(), output=sys.stdout) -> None:
         self.input = input
         self.display = Display()
         self.clock = pygame.time.Clock()
@@ -18,6 +26,7 @@ class Game:
         self._game_exit = False
         self.staleness_factor = 100
         self.output = output
+        self.num_success = 0
         
         pygame.init()
 
@@ -43,10 +52,7 @@ class Game:
     def start(self, execution_id=0) -> None:
         execution_id += 1
         self.input.reset_move()
-        result = None
         stalled = 0
-
-        print('Running demonstration ', execution_id)
 
         initpos_x = random.randint(0, self.display.screen.width-50)
         initpos_y = random.randint(0, self.display.screen.height-50)
@@ -69,9 +75,10 @@ class Game:
                 if stalled > self.staleness_factor:
                     self.fail()
                     pygame.display.update()
+                    print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
                     time.sleep(1)
                     self.start(execution_id)
-                    result = "failed"
+
             else: 
                 stalled = 0
 
@@ -81,22 +88,26 @@ class Game:
             if self.display.is_car_inside_parking():
                 self.success()
                 pygame.display.update()
+                self.num_success += 1
+                print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
                 time.sleep(1)
                 self.start(execution_id)
-                result = "success"
-
 
             if self.display.is_car_out_of_bounds():
                 self.fail()
                 pygame.display.update()
+                print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
                 time.sleep(1)
                 self.start(execution_id)
-                result = "failed"
+
 
             pygame.display.update()
             self.update_clock()
 
-            print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{move}", file=self.output)
+            if move.x > 0 or move.y > 0:
+                print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{move}", file=self.output)
+                #print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{self.display.car.distance(self.display.parking)},{move}", file=self.output)
+                # print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{Coordinate(self.display.car.x-move.x, self.display.car.y-move.y)}", file=self.output)
 
     def quit(self) -> None:
         pygame.quit()

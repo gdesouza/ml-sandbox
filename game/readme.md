@@ -25,11 +25,9 @@ To run a game reading the input from a file, simply instantiate the object witho
     game = Game()
 ```
 
-TODO
-
-- [ ] Save each execution into a replay file
 
 #### From file
+> Warning: this mode of execution is currently not working. It broke after the game changed to having random initial positions for the blue and red boxes. To fix it, one needs to read the first line of each execution and use the position to initialize the boxes location.
 
 This command will instantiate a game object and read the input from a file. You will also have to import inputs.FromFile class.  Currently, the file name is replay_game_1.
 
@@ -40,10 +38,8 @@ This command will instantiate a game object and read the input from a file. You 
 
 ## TODO
 
-- [ ] Read file name from command arguments
 - [ ] Use RGB images for training
-- [ ] Use position control
-- [ ] Predict next x moves
+- [ ] Predict next N moves
 
 ## Class Diagram
 > _Install Markdown Preview to see the diagrams in VS Code_

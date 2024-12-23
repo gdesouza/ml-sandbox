@@ -6,8 +6,6 @@ import torch.nn as nn
 from util.model import ContinuousPolicyNetwork
 from util.acceleration import accel_device
 
-# Specify the training file path
-file_path = 'game_data'  # Replace with your actual file path
 
 num_epochs = 20
 

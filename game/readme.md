@@ -1,52 +1,63 @@
-# Games
+# Move Square Game
 
-## Move Square Static
-
-### Description
+## Description
 
 The goal is to move the blue square into the red square without touching the borders of the screen.
 
-The initial positions are fixed and there are no obstacles.
+The initial positions are random and there are no obstacles.
 
-### Modes of execution
+## Quick Start
 
-#### From keyboard
+### Initialize virtual environment
 
+#### Create a virtual environment 
+python -m venv myenv
+
+#### Activate the virtual environment
+
+- Windows
 ```
-python3 move_square_static.py
-```
-
-This command will instantiate a game object and read the input from the keyboard (arrow keys).
-Keep playing, and the output will be printed on the screen.
-
-To run a game reading the input from a file, simply instantiate the object without any arguments (it will default to the keyboard):
-
-```
-    game = Game()
+myenv\Scripts\activate
 ```
 
-
-#### From file
-> Warning: this mode of execution is currently not working. It broke after the game changed to having random initial positions for the blue and red boxes. To fix it, one needs to read the first line of each execution and use the position to initialize the boxes location.
-
-This command will instantiate a game object and read the input from a file. You will also have to import inputs.FromFile class.  Currently, the file name is replay_game_1.
-
+- macOS and Linux
 ```
-    from util.inputs import FromFile
-    game = Game(input=FromFile('replay_game_1.txt'))
+source myenv/bin/activate
 ```
 
-## TODO
+#### Install requirements
+```
+pip install -r requirements.txt
+```
 
-- [ ] Use RGB images for training
-- [ ] Predict next N moves
+### Collect demonstrations
 
-## Class Diagram
+- Run `play.py` and play the game. Make sure to succeed and collect good samples.
+- Press `<CTRL+C>` on the terminal window when done. 
+- The demonstrations will be stored inside the data directory. The file name will be `demonstrations_<date>_<time>.csv`.
+
+### Train your model
+
+- To train the model, execute `train.py <filename>`, where `filename` is the demonstrations file name without the extension (remove .csv).
+- After the model is trained, it will be saved as `demonstrations_<date>_<time>.pth`. 
+- You can change the hyperparameters or adjust the training parameters in:
+    - `util/model.py`
+    - `train.py`
+- You can retrain as many times as you want, but please keep in mind that it will rewrite the old model. If you want to save as a different name you will have to rename the CSV file.
+
+### Execute the game 
+
+- To execute the game using the trained model, run `execute.py <filename>`, where `filename` is the demonstrations file name without the extension (remove .csv).
+
+That's it. Now you can iterate over this cycle (play, train, execute) adjusting the model and parameters to try to improve the model and obtain a higher success rate.
+
+## Game Class Diagram
 > _Install Markdown Preview to see the diagrams in VS Code_
 
 ```mermaid
 
 classDiagram
+    Game o-- Input
     Game o-- Display
     Game : start()
     Game : is_game_ended()
@@ -54,10 +65,23 @@ classDiagram
     Game : fail()
     Game : render()
 
+    Input : reset_move()
+    Input: goto()
+    Input: move_target()
+    Input: get_move()
+    Input <|-- FromKeyboard
+    Input <|-- FromModel
+
+    FromModel : ContinuousPolicyNetwork model
+    FromModel : Tensor state 
+    FromModel o-- ContinuousPolicyNetwork
+    ContinuousPolicyNetwork: forward()
+
+
     Display o-- Screen
-    Screen : width
-    Screen : height
-    Screen : background_colour
+    Screen : int width
+    Screen : int height
+    Screen : int background_colour
     
     Display o-- Rectangle
 
@@ -66,6 +90,13 @@ classDiagram
 
     Rectangle : move()
     Rectangle : go_to()
+    Rectangle: Coordinate pos 
+    Rectangle: int w
+    Rectangle: int h
+
+    Rectangle o-- Coordinate
+    Coordinate:x
+    Coordinate: y
 
 
 ```

@@ -56,19 +56,18 @@ class Game:
 
         initpos_x = random.randint(0, self.display.screen.width-50)
         initpos_y = random.randint(0, self.display.screen.height-50)
-        self.display.car.go_to(Coordinate(initpos_x,initpos_y))
+        self.display.car.teleport(Coordinate(initpos_x,initpos_y))
         self.input.goto(initpos_x,initpos_y)
 
         initpos_x = random.randint(0, self.display.screen.width-70)
         initpos_y = random.randint(0, self.display.screen.height-70)
-        self.display.parking.go_to(Coordinate(initpos_x, initpos_y))
+        self.display.parking.teleport(Coordinate(initpos_x, initpos_y))
         self.input.move_target(initpos_x, initpos_y)
                                
         while not self.is_game_ended():
             
             move = self.input.get_move()
-            self.display.car.x += move.x
-            self.display.car.y += move.y
+            self.display.car.pos += move
 
             if move == Coordinate(0,0):
                 stalled += 1

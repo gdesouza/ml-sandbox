@@ -8,26 +8,25 @@ class Rectangle():
     def __init__(self, x=0, y=0, w=0, h=0, colour=Colour.BLACK) -> None:
         self.x = x
         self.y = y
+        self.pos = Coordinate(x, y)
         self.w = w
         self.h = h
         self.colour = colour
 
     def dim(self) -> list:
-        return [ self.x, self.y, self.w, self.h ]
+        return [ self.pos.x, self.pos.y, self.w, self.h ]
     
     def draw(self, display: object) -> None:
         pygame.draw.rect(display, self.colour, self.dim())
 
-    def move(self, delta: object) -> None:
-        self.x += delta.x
-        self.y += delta.y
+    def step(self, delta: object) -> None:
+        self.pos += delta
 
-    def go_to(self, position: object) -> None:
-        self.x = position.x
-        self.y = position.y
+    def teleport(self, position: object) -> None:
+        self.pos = position
 
     def __str__(self) -> str:
-        return f"{self.x},{self.y}"
+        return f"{self.pos.x},{self.pos.y}"
     
     def center(self) -> object:
         x = (self.x + self.w)/2

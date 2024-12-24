@@ -38,12 +38,12 @@ class Display:
         self.gameDisplay.blit(TextSurf, TextRect)
 
     def is_car_inside_parking(self) -> None:
-        return (self.car.x > self.parking.x) and (self.car.x+self.car.w < self.parking.x+self.parking.w) and \
-                (self.car.y > self.parking.y) and (self.car.y+self.car.h < self.parking.y+self.parking.h)
+        return (self.car.pos.x > self.parking.pos.x) and (self.car.pos.x+self.car.w < self.parking.pos.x+self.parking.w) and \
+                (self.car.pos.y > self.parking.pos.y) and (self.car.pos.y+self.car.h < self.parking.pos.y+self.parking.h)
 
     def is_car_out_of_bounds(self) -> None:
-        return (self.car.x > self.screen.width - self.car.w or self.car.x < 0) or \
-                (self.car.y > self.screen.height - self.car.h or self.car.y < 0)
+        return (self.car.pos.x > self.screen.width - self.car.w or self.car.pos.x < 0) or \
+                (self.car.pos.y > self.screen.height - self.car.h or self.car.pos.y < 0)
 
 
 

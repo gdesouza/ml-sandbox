@@ -54,8 +54,10 @@ class Game:
         self.input.reset_move()
         stalled = 0
 
-        initpos_x = random.randint(0, self.display.screen.width-50)
-        initpos_y = random.randint(0, self.display.screen.height-50)
+        # initpos_x = random.randint(0, self.display.screen.width-50)
+        # initpos_y = random.randint(0, self.display.screen.height-50)
+        initpos_x = (self.display.screen.width-50)/2
+        initpos_y = (self.display.screen.height-50)/2
         self.display.car.teleport(Coordinate(initpos_x,initpos_y))
         self.input.goto(initpos_x,initpos_y)
 

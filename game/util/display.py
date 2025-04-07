@@ -1,4 +1,3 @@
-import pandas
 import pygame
 
 from util.screen import Screen

@@ -7,8 +7,8 @@ game:
     width: 50
     height: 50
   redbox:
-    width: 500
-    height: 500
+    width: 100
+    height: 100
   title: "Move the blue box to the red box"
   fps: 60
   background_color: [0, 0, 0]

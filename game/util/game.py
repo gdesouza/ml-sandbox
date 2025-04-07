@@ -78,13 +78,6 @@ class Game:
 
     def update_clock(self) -> None:
         self.clock.tick(self.framerate)
-        
-
-    def fail(self) -> None:
-        self.display.message_display('Failed')
-
-    def success(self) -> None:
-        self.display.message_display('Success')
 
     def render(self) -> None:
         self.display.background()
@@ -98,15 +91,13 @@ class Game:
 
         # initpos_x = random.randint(0, self.display.screen.width-50)
         # initpos_y = random.randint(0, self.display.screen.height-50)
-        initpos_x = (self.display.screen.width-50)/2
-        initpos_y = (self.display.screen.height-50)/2
-        self.bluebox.teleport(Coordinate(initpos_x,initpos_y))
-        self.input.goto(initpos_x,initpos_y)
+        initpos = Coordinate.center(self.display.screen.width - self.bluebox.w, self.display.screen.height - self.bluebox.h)
+        self.bluebox.teleport(initpos)
+        self.input.goto(initpos.x,initpos.y)
 
-        initpos_x = random.randint(0, self.display.screen.width-70)
-        initpos_y = random.randint(0, self.display.screen.height-70)
-        self.redbox.teleport(Coordinate(initpos_x, initpos_y))
-        self.input.move_target(initpos_x, initpos_y)
+        initpos = Coordinate.random(self.display.screen.width - self.redbox.w, self.display.screen.height - self.redbox.h) 
+        self.redbox.teleport(initpos)
+        self.input.move_target(initpos.x, initpos.y)
                                
         while not self.is_game_ended():
             
@@ -116,7 +107,7 @@ class Game:
             if move == Coordinate(0,0):
                 stalled += 1
                 if stalled > self.staleness_factor:
-                    self.fail()
+                    self.display.message_display('Stalled')
                     pygame.display.update()
                     print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
                     time.sleep(1)
@@ -128,7 +119,7 @@ class Game:
             self.render()
 
             if self.bluebox.is_inside(self.redbox):
-                self.success()
+                self.display.message_display('Success')
                 pygame.display.update()
                 self.num_success += 1
                 print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
@@ -136,7 +127,7 @@ class Game:
                 self.start(execution_id)
 
             elif not self.bluebox.is_inside(Rectangle(0, 0, self.display.screen.width, self.display.screen.height)):
-                self.fail()
+                self.display.message_display('Failed')
                 pygame.display.update()
                 print(f"f{execution_id}: {self.num_success/execution_id:.2f}%")
                 time.sleep(1)

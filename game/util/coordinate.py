@@ -1,3 +1,5 @@
+import random
+
 class Coordinate:
     def __init__(self, x, y) -> None:
         self.x = x
@@ -14,6 +16,18 @@ class Coordinate:
     
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
+    
+    @classmethod
+    def random(cls, width, height):
+        x = random.randint(0, width)
+        y = random.randint(0, height)
+        return cls(x, y)
+    
+    @classmethod
+    def center(cls, width, height):
+        x = (width-50)/2
+        y = (height-50)/2
+        return cls(x, y)
     
 
 if __name__=='__main__':

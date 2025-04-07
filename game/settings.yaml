@@ -1,8 +1,8 @@
 game:
   stallness_factor: 100
   screen: 
-    width: 800
-    height: 600
+    width: 1500
+    height: 900
   bluebox:
     width: 50
     height: 50
@@ -12,3 +12,12 @@ game:
   title: "Move the blue box to the red box"
   fps: 60
   background_color: [0, 0, 0]
+
+training:
+  num_epochs: 500
+  batch_size: 64
+  learning_rate: 0.00001
+  shuffle: False
+  drop_columns: ['Execution', 'clock']
+  input_columns: ['current_position_x', 'current_position_y', 'target_position_x', 'target_position_y']
+  output_columns: ['move_x', 'move_y']

@@ -6,8 +6,6 @@ from util.coordinate import Coordinate
 
 class Rectangle():
     def __init__(self, x=0, y=0, w=0, h=0, colour=Colour.BLACK) -> None:
-        self.x = x
-        self.y = y
         self.pos = Coordinate(x, y)
         self.w = w
         self.h = h
@@ -29,12 +27,15 @@ class Rectangle():
         return f"{self.pos.x},{self.pos.y}"
     
     def center(self) -> object:
-        x = (self.x + self.w)/2
-        y = (self.y + self.y)/2
+        x = (self.pos.x + self.w)/2
+        y = (self.pos.y + self.y)/2
         return Coordinate(x,y)
     
-
     def distance(self, other) -> object:
         a = self.center()
         b = other.center()
-        return sqrt((b.x - a.x)**2 + (b.y - a.y)**2)
+        return sqrt((b.pos.x - a.pos.x)**2 + (b.pos.y - a.pos.y)**2)
+    
+    def is_inside(self, other) -> None:
+        return (self.pos.x > other.pos.x) and (self.pos.x + self.w < other.pos.x + other.w) and \
+                (self.pos.y > other.pos.y) and (self.pos.y + self.h < other.pos.y + other.h)

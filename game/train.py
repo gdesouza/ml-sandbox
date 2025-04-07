@@ -7,7 +7,7 @@ from util.model import ContinuousPolicyNetwork
 from util.acceleration import accel_device
 
 
-num_epochs = 20
+num_epochs = 200
 
 
 def load_data(filename:str) -> pd.DataFrame:
@@ -55,6 +55,8 @@ def save_model(model, filename):
 
 def main(file_path):
     device = accel_device()
+    print(f"Using device: {device}")
+
 
     df = load_data(file_path)
     # define X and y tensors

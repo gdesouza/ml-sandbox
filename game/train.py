@@ -5,29 +5,7 @@ import torch.nn as nn
 
 from util.model import ContinuousPolicyNetwork
 from util.acceleration import accel_device
-
-def default_settings():
-    settings = {
-        'training': {
-            'num_epochs': 200,
-            'batch_size': 32,
-            'learning_rate': 0.001,
-            'shuffle': True,
-            'drop_columns': ['Execution', 'clock'],
-            'input_columns': ['current_position_x', 'current_position_y', 'target_position_x', 'target_position_y'],
-            'output_columns': ['move_x', 'move_y'],
-        }
-    }
-
-def parse_yaml(file_path):
-  import yaml
-  with open(file_path, 'r') as stream:
-    try:
-      return yaml.safe_load(stream)
-    except yaml.YAMLError as exc:
-      print(exc)
-      return default_settings()
-
+from util.settings import parse_yaml
 
 def load_data(filename:str, settings) -> pd.DataFrame:
     try:

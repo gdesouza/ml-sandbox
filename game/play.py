@@ -20,7 +20,7 @@ if __name__=="__main__":
     print('Execution,clock,current_position_x,current_position_y,target_position_x,target_position_y,move_x,move_y', file=out)
 
     game = Game(output=out)
-    game.start()
+    game.run()
     out.close()
-    game.quit()
-    quit()
+    print("Game finished")
+    print("Data saved to", filename)

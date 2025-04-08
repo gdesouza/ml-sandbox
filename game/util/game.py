@@ -20,16 +20,26 @@ def signal_handler(sig, frame):
     print('Game over.')
     _game_exit = True
 
-    # sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
+def end_game():
+    global _game_exit
+    _game_exit = True
+
+def start_game():
+    global _game_exit
+    _game_exit = False
+
+def is_game_ended():
+    global _game_exit
+    return _game_exit
 
 class Game:
     """
     Game class to handle the game logic and rendering.
     """
     global _game_exit
-    
+
     def __init__(self, input=FromKeyboard(), output=sys.stdout) -> None:
         self.input = input
         self.output = output
@@ -54,15 +64,12 @@ class Game:
         self.bluebox = Rectangle((self.screen.width * 0.45),(self.screen.height * 0.8), bluebox_width, bluebox_height, Colour.BLUE)
         self.redbox = Rectangle(0, 0, redbox_width, redbox_height, Colour.RED)
 
-        _game_exit = False
+        start_game()
         self.num_success = 0
 
         pygame.init()
 
     
-    def is_game_ended(self) -> bool:
-        return _game_exit
-
     def update_clock(self) -> None:
         self.clock.tick(self.framerate)
 
@@ -77,7 +84,7 @@ class Game:
     def run(self) -> None:
         execution_id = 0
 
-        while not self.is_game_ended():
+        while not is_game_ended():
             execution_id += 1
             self.start(execution_id)
             print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
@@ -97,7 +104,7 @@ class Game:
         self.redbox.teleport(initpos)
         self.input.move_target(initpos.x, initpos.y)
                                
-        while not self.is_game_ended():
+        while not is_game_ended():
             
             move = self.input.get_move()
             self.bluebox.pos += move

@@ -1,21 +1,103 @@
-import sys
-import os
-from util.game import Game
-from util.inputs import FromModel
-from util.coordinate import Coordinate
+"""Compatibility command for finite, headless model evaluation."""
 
-if __name__=="__main__":
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <filename>")
-        sys.exit(1)
-    
-    # Parse the filename from the command line arguments.
-    ML_MODEL = f"{sys.argv[1]}.pth"
+from __future__ import annotations
 
-    f = open(os.devnull,"w")
+import argparse
+import json
+from pathlib import Path
 
-    game = Game(input=FromModel(ML_MODEL, Coordinate(360,480), Coordinate(0,0)), output=f)
-    game.start()
-    game.quit()
-    f.close()
-    quit()
+import torch
+
+from util.domain import EvaluationConfig
+from util.evaluation import (
+    compare_experiments,
+    evaluate_policy,
+    heuristic_policy,
+    save_evaluation,
+    torch_policy,
+    untrained_policy,
+)
+from util.model import ContinuousPolicyNetwork
+from util.training import load_artifact
+
+
+def _legacy_model(path: Path) -> ContinuousPolicyNetwork:
+    try:
+        state_dict = torch.load(path, map_location="cpu", weights_only=True)
+        hidden_layers = 4 if "fc3.weight" in state_dict else 2
+        hidden_size = int(state_dict["fc1.weight"].shape[0])
+        model = ContinuousPolicyNetwork(
+            hidden_size=hidden_size, hidden_layers=hidden_layers, device="cpu"
+        )
+        model.load_state_dict(state_dict)
+    except (OSError, KeyError, RuntimeError, ValueError) as error:
+        raise ValueError(f"Could not load model checkpoint {path}: {error}") from error
+    model.eval()
+    return model
+
+
+def _resolve_model(argument: str) -> tuple[ContinuousPolicyNetwork, str | None]:
+    path = Path(argument)
+    if path.suffix == ".json":
+        loaded = load_artifact(path)
+        return loaded.model, str(path)
+    if not path.suffix:
+        path = path.with_suffix(".pth")
+    return _legacy_model(path), None
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Evaluate a behavior-cloning model on finite, seeded episodes."
+    )
+    parser.add_argument("model", nargs="?", help="experiment .json or legacy .pth path")
+    parser.add_argument("--episodes", type=int, default=20)
+    parser.add_argument("--max-steps", type=int, default=500)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--baseline", choices=("expert", "untrained"))
+    parser.add_argument("--output", type=Path, help="evaluation JSON destination")
+    parser.add_argument(
+        "--compare", nargs="+", type=Path, metavar="JSON", help="compare saved results"
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.compare:
+        print(json.dumps(compare_experiments(args.compare), indent=2))
+        return 0
+    if not args.model and not args.baseline:
+        build_parser().error("provide a model path, --baseline, or --compare")
+
+    config = EvaluationConfig(args.episodes, args.max_steps, args.seed)
+    experiment = None
+    if args.baseline == "expert":
+        policy, name = heuristic_policy, "hand-coded expert"
+    elif args.baseline == "untrained":
+        policy, name = untrained_policy, "untrained (no action)"
+    else:
+        model, experiment = _resolve_model(args.model)
+        policy, name = torch_policy(model), Path(args.model).stem
+
+    result = evaluate_policy(
+        policy, config, policy_name=name, experiment=experiment
+    )
+    metrics = result.metrics
+    print(f"Policy: {name}")
+    print(
+        f"Successes: {metrics.successes}/{metrics.episodes} "
+        f"({metrics.success_rate:.1%})"
+    )
+    print(
+        "Successful steps (mean / median): "
+        f"{metrics.mean_successful_steps} / {metrics.median_successful_steps}"
+    )
+    print(f"Failures: {metrics.stalled} stalled, {metrics.out_of_bounds} out of bounds")
+    if args.output:
+        print(f"Evaluation saved to {save_evaluation(result, args.output)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

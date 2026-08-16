@@ -20,6 +20,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from util.data import Demonstration
+from util.downsampling import DownsampleContext, LoadedDownsampler
 from util.domain import TrainingConfig
 from util.model import ContinuousPolicyNetwork
 
@@ -51,6 +52,7 @@ class TrainingResult:
     best_epoch: int
     dataset_fingerprint: str
     config: TrainingConfig
+    downsampling: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -109,6 +111,7 @@ def train_policy(
     *,
     device: str | torch.device = "cpu",
     progress: Callable[[int, float, float], None] | None = None,
+    downsampler: LoadedDownsampler | None = None,
 ) -> TrainingResult:
     """Train on normalized positions and retain the best validation model."""
     config.validate()
@@ -119,6 +122,25 @@ def train_policy(
     )
     train_rows = [row for row in rows if row.episode_id in train_ids]
     validation_rows = [row for row in rows if row.episode_id in validation_ids]
+    downsampling = None
+    if downsampler is not None:
+        before = len(train_rows)
+        downsampled = downsampler.apply(
+            train_rows,
+            DownsampleContext(seed=config.seed),
+        )
+        episodes_before = {row.episode_id for row in train_rows}
+        train_rows = downsampled.rows
+        episodes_after = {row.episode_id for row in train_rows}
+        downsampling = {
+            "name": downsampler.name,
+            "source_hash": downsampler.source_hash,
+            "description": downsampled.description,
+            "training_rows_before": before,
+            "training_rows_after": len(train_rows),
+            "validation_rows": len(validation_rows),
+            "removed_training_episode_ids": sorted(episodes_before - episodes_after),
+        }
     normalization = fit_normalization(train_rows)
     mean = torch.tensor(normalization.mean, dtype=torch.float32)
     std = torch.tensor(normalization.std, dtype=torch.float32)
@@ -203,12 +225,24 @@ def train_policy(
         best_epoch=best_epoch,
         dataset_fingerprint=dataset_fingerprint(rows),
         config=config,
+        downsampling=downsampling,
     )
 
 
 def save_artifact(result: TrainingResult, output_directory: str | Path) -> tuple[Path, Path]:
     """Save portable weights and self-describing JSON without overwriting a run."""
-    config_json = json.dumps(asdict(result.config), sort_keys=True, separators=(",", ":"))
+    run_settings = {
+        "config": asdict(result.config),
+        "downsampling": (
+            {
+                "name": result.downsampling["name"],
+                "source_hash": result.downsampling["source_hash"],
+            }
+            if result.downsampling is not None
+            else None
+        ),
+    }
+    config_json = json.dumps(run_settings, sort_keys=True, separators=(",", ":"))
     run_id = hashlib.sha256(
         f"{result.dataset_fingerprint}:{config_json}".encode()
     ).hexdigest()[:12]
@@ -238,6 +272,7 @@ def save_artifact(result: TrainingResult, output_directory: str | Path) -> tuple
             "baked_into_first_layer": True,
         },
         "config": asdict(result.config),
+        "downsampling": result.downsampling,
         "seed": result.config.seed,
         "dataset_fingerprint": result.dataset_fingerprint,
         "split": {

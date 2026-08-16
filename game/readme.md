@@ -38,6 +38,14 @@ The collector validates the file and continues numbering after its highest episo
 
 `train.py --help` lists configurable epochs, learning rate, batch size, hidden size/layers, validation fraction, seed, and output directory. The trainer splits whole episodes into training and validation sets, normalizes position features, and saves portable `.pth` weights plus self-describing `.json` metadata.
 
+To remove no-op actions from only the training partition while leaving the raw CSV and validation partition unchanged:
+
+```bash
+python train.py data/demonstrations_YYYYMMDD_HHMMSS.csv --downsample drop-noop
+```
+
+Run `python train.py --list-downsamplers` to discover installed workspace plugins. The experiment metadata records the plugin name, source hash, before/after row counts, and any episode left empty by filtering. See [Downsampling plugins](../docs/downsampling-plugins.md) for the extension contract.
+
 Watch the trained model using the printed weights path without `.pth`:
 
 ```bash

@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from util.data import DatasetError, load_demonstrations
+from util.downsampling import available_downsamplers, load_downsampler
 from util.training import TRAINING_PRESETS, save_artifact, train_policy, training_preset
 
 
@@ -19,7 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Train a behavior-cloning model from recorded demonstrations."
     )
-    parser.add_argument("dataset", help="demonstration CSV path (the .csv suffix is optional)")
+    parser.add_argument(
+        "dataset",
+        nargs="?",
+        help="demonstration CSV path (the .csv suffix is optional)",
+    )
     parser.add_argument(
         "--preset", choices=tuple(TRAINING_PRESETS), default="balanced",
         help="beginner-friendly starting configuration (default: balanced)",
@@ -32,11 +37,29 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation-fraction", type=float)
     parser.add_argument("--seed", type=int)
     parser.add_argument("--output-dir", type=Path, help="artifact directory (default: dataset folder)")
+    parser.add_argument(
+        "--downsample",
+        metavar="NAME",
+        help="workspace plugin name, for example: drop-noop",
+    )
+    parser.add_argument(
+        "--list-downsamplers",
+        action="store_true",
+        help="list available workspace downsampling plugins and exit",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.list_downsamplers:
+        choices = available_downsamplers()
+        print("Available downsamplers:")
+        for name in choices:
+            print(f"  {name}")
+        return 0
+    if args.dataset is None:
+        build_parser().error("dataset is required unless --list-downsamplers is used")
     overrides = {
         name: getattr(args, name)
         for name in (
@@ -48,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     config = replace(training_preset(args.preset), **overrides)
     dataset_path = _dataset_path(args.dataset)
     try:
+        downsampler = load_downsampler(args.downsample) if args.downsample else None
         rows, legacy = load_demonstrations(dataset_path)
         print(
             f"Training with {args.preset} preset: {config.epochs} epochs, "
@@ -60,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"Epoch {epoch}/{config.epochs} - "
                 f"train loss: {train_loss:.6f}, validation loss: {validation_loss:.6f}"
             ),
+            downsampler=downsampler,
         )
         weights, metadata = save_artifact(result, args.output_dir or dataset_path.parent)
     except (DatasetError, ValueError, FileExistsError) as error:
@@ -67,6 +92,20 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if legacy:
         print("Loaded a legacy dataset; episode outcomes are recorded as unknown.")
+    if result.downsampling is not None:
+        print(f"Downsampling: {result.downsampling['description']}")
+        print(
+            "Training rows: "
+            f"{result.downsampling['training_rows_before']} before, "
+            f"{result.downsampling['training_rows_after']} after; "
+            f"validation rows unchanged: {result.downsampling['validation_rows']}"
+        )
+        removed_episodes = result.downsampling["removed_training_episode_ids"]
+        if removed_episodes:
+            print(
+                "Training episodes removed because no samples remained: "
+                + ", ".join(str(value) for value in removed_episodes)
+            )
     print(f"Best validation loss: {min(result.validation_loss):.6f} (epoch {result.best_epoch})")
     print(f"Weights saved to {weights}")
     print(f"Experiment details saved to {metadata}")

@@ -54,6 +54,14 @@ Choose **Train a model** and paste the dataset path. This uses the Balanced pres
 
 Training reserves whole episodes for validation and saves both model weights (`.pth`) and experiment details (`.json`). Try `--preset balanced` when you have more demonstrations.
 
+If inspection reports many `(0, 0)` actions, compare a second experiment that removes them from the training partition:
+
+```bash
+python -m behavior_cloning_game train game/data/FILE.csv -- --downsample drop-noop
+```
+
+The original CSV and validation rows remain unchanged, making the comparison reproducible.
+
 ## 5. Evaluate the policy
 
 Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many attempts to watch. The game window shows the learned policy moving the blue circle:

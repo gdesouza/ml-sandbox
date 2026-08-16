@@ -7,6 +7,7 @@ import torch
 
 from util.data import Demonstration
 from util.domain import Action, GameState, TrainingConfig
+from util.downsampling import load_downsampler
 from util.training import (
     fit_normalization,
     load_artifact,
@@ -95,6 +96,79 @@ class TrainingTests(unittest.TestCase):
         )
         self.assertEqual([update[0] for update in updates], [1, 2, 3])
         self.assertTrue(all(update[1] >= 0 and update[2] >= 0 for update in updates))
+
+    def test_downsampling_applies_only_to_training_partition(self):
+        rows = []
+        for episode_id in range(1, 6):
+            rows.extend(
+                [
+                    Demonstration(
+                        episode_id,
+                        0,
+                        0,
+                        GameState(100, 100, 200, 200),
+                        Action(0, 0),
+                    ),
+                    Demonstration(
+                        episode_id,
+                        1,
+                        16,
+                        GameState(100, 100, 200, 200),
+                        Action(5, 0),
+                    ),
+                ]
+            )
+
+        result = train_policy(
+            rows,
+            self.config,
+            downsampler=load_downsampler("drop-noop"),
+        )
+
+        self.assertEqual(result.downsampling["training_rows_before"], 6)
+        self.assertEqual(result.downsampling["training_rows_after"], 3)
+        self.assertEqual(result.downsampling["validation_rows"], 4)
+        self.assertEqual(result.downsampling["name"], "drop-noop")
+        self.assertEqual(result.downsampling["removed_training_episode_ids"], [])
+        with tempfile.TemporaryDirectory() as directory:
+            _, metadata_path = save_artifact(result, directory)
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["downsampling"]["name"], "drop-noop")
+        self.assertEqual(len(metadata["downsampling"]["source_hash"]), 64)
+
+    def test_downsampling_produces_a_distinct_experiment_id(self):
+        rows = []
+        for episode_id in range(1, 6):
+            rows.extend(
+                [
+                    Demonstration(
+                        episode_id,
+                        0,
+                        0,
+                        GameState(100, 100, 200, 200),
+                        Action(0, 0),
+                    ),
+                    Demonstration(
+                        episode_id,
+                        1,
+                        16,
+                        GameState(100, 100, 200, 200),
+                        Action(5, 0),
+                    ),
+                ]
+            )
+        plain = train_policy(rows, self.config)
+        filtered = train_policy(
+            rows,
+            self.config,
+            downsampler=load_downsampler("drop-noop"),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            plain_weights, _ = save_artifact(plain, directory)
+            filtered_weights, _ = save_artifact(filtered, directory)
+
+        self.assertNotEqual(plain_weights.name, filtered_weights.name)
 
     def test_artifact_round_trip_is_cpu_portable_and_self_describing(self):
         result = train_policy(self.rows, self.config)

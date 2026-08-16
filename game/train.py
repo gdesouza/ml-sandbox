@@ -1,79 +1,66 @@
-import sys
-import pandas as pd
-import torch
-import torch.nn as nn
+"""Compatibility command for training a behavior-cloning policy."""
 
-from util.model import ContinuousPolicyNetwork
-from util.acceleration import accel_device
+from __future__ import annotations
+
+import argparse
+from dataclasses import replace
+from pathlib import Path
+
+from util.data import DatasetError, load_demonstrations
+from util.training import TRAINING_PRESETS, save_artifact, train_policy, training_preset
 
 
-num_epochs = 20
+def _dataset_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.suffix == ".csv" else path.with_suffix(".csv")
 
 
-def load_data(filename:str) -> pd.DataFrame:
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Train a behavior-cloning model from recorded demonstrations."
+    )
+    parser.add_argument("dataset", help="demonstration CSV path (the .csv suffix is optional)")
+    parser.add_argument(
+        "--preset", choices=tuple(TRAINING_PRESETS), default="balanced",
+        help="beginner-friendly starting configuration (default: balanced)",
+    )
+    parser.add_argument("--epochs", type=int)
+    parser.add_argument("--learning-rate", type=float)
+    parser.add_argument("--batch-size", type=int)
+    parser.add_argument("--hidden-size", type=int)
+    parser.add_argument("--hidden-layers", type=int, choices=(2, 4))
+    parser.add_argument("--validation-fraction", type=float)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--output-dir", type=Path, help="artifact directory (default: dataset folder)")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    overrides = {
+        name: getattr(args, name)
+        for name in (
+            "epochs", "learning_rate", "batch_size", "hidden_size",
+            "hidden_layers", "validation_fraction", "seed",
+        )
+        if getattr(args, name) is not None
+    }
+    config = replace(training_preset(args.preset), **overrides)
+    dataset_path = _dataset_path(args.dataset)
     try:
-        # Load the file into a DataFrame
-        df = pd.read_csv(f"{filename}.csv", sep=',')  
+        rows, legacy = load_demonstrations(dataset_path)
+        result = train_policy(rows, config)
+        weights, metadata = save_artifact(result, args.output_dir or dataset_path.parent)
+    except (DatasetError, ValueError, FileExistsError) as error:
+        print(f"Training could not start: {error}")
+        return 1
+    if legacy:
+        print("Loaded a legacy dataset; episode outcomes are recorded as unknown.")
+    print(f"Best validation loss: {min(result.validation_loss):.6f} (epoch {result.best_epoch})")
+    print(f"Weights saved to {weights}")
+    print(f"Experiment details saved to {metadata}")
+    return 0
 
-    except FileNotFoundError:
-        print(f"Error: File not found at {filename}")
-    except pd.errors.ParserError:
-        print(f"Error: Could not parse the file. Check the file format and separator.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
 
-    # drop columns "execution" and "clock" from df
-    df = df.drop(columns=['Execution', 'clock'])
-    return df
-
-def train(X, y):
-    
-    model = ContinuousPolicyNetwork()
-    model.train()  # set model to training mode
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    criterion = nn.MSELoss()
-
-    dataset = torch.utils.data.TensorDataset(X, y)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=False)
-
-    for epoch in range(num_epochs):
-        for batch_X, batch_Y in loader:
-            optimizer.zero_grad()
-            pred = model(batch_X)
-            loss = criterion(pred, batch_Y)
-            loss.backward()
-            optimizer.step()
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item()}")
-    
-    return model
-
-def save_model(model, filename):
-    filename = f"{filename}.pth"
-
-    torch.save(model.state_dict(), filename)
-    print(f"Model saved as {filename}")
-
-def main(file_path):
-    device = accel_device()
-
-    df = load_data(file_path)
-    # define X and y tensors
-    X = df.iloc[:, :-2].values
-    X = torch.tensor(X, dtype=torch.float32, device=device)
-
-    y = df.iloc[:, -2:].values
-    y = torch.tensor(y, dtype=torch.float32, device=device)
-
-    model = train(X,y)
-    save_model(model, file_path)
-
-if __name__=='__main__':
-        # Check that a filename has been provided as a command line argument.
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <filename>")
-        sys.exit(1)
-    
-    # Parse the filename from the command line arguments.
-    filename = sys.argv[1]
-    
-    main(filename)
+if __name__ == "__main__":
+    raise SystemExit(main())

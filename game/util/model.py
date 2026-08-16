@@ -6,12 +6,19 @@ from util.acceleration import accel_device
 
 
 class ContinuousPolicyNetwork(nn.Module):
-    def __init__(self, input_size=4, hidden_size=64, output_size=2, hidden_layers=4):
+    def __init__(
+        self,
+        input_size=4,
+        hidden_size=64,
+        output_size=2,
+        hidden_layers=4,
+        device=None,
+    ):
         super(ContinuousPolicyNetwork, self).__init__()
         if hidden_layers not in (2, 4):
             raise ValueError("hidden_layers must be 2 or 4")
 
-        gpu = accel_device()
+        gpu = accel_device() if device is None else device
         self.fc1 = nn.Linear(input_size, hidden_size, device=gpu)
         self.fc2 = nn.Linear(hidden_size, hidden_size, device=gpu)
         if hidden_layers == 4:

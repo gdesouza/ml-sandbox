@@ -1,8 +1,11 @@
 import io
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from util.coordinate import Coordinate
+from util.data import EpisodeRecorder, load_demonstrations
 from util.domain import EpisodeOutcome
 from util.game import Game
 from util.rectangle import Rectangle
@@ -104,6 +107,30 @@ class GameLifecycleTests(unittest.TestCase):
         second._reset_episode()
 
         self.assertEqual(first_input.targets, second_input.targets)
+
+    @patch("util.game.pygame.display.update")
+    def test_completed_episode_records_versioned_pre_action_states(self, update):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "demonstrations.csv"
+            display = FakeDisplay([False, True])
+            game = Game(
+                FakeInput([Coordinate(-5, 0), Coordinate(0, 5)]),
+                io.StringIO(),
+                display=display,
+                seed=1,
+                framerate=0,
+                recorder=EpisodeRecorder(path),
+            )
+
+            result = game.run_episode(1)
+            rows, legacy = load_demonstrations(path)
+
+        self.assertEqual(result.outcome, EpisodeOutcome.SUCCESS)
+        self.assertFalse(legacy)
+        self.assertEqual(rows[0].action.x, -5)
+        self.assertEqual(rows[0].state.blue_x, 45)
+        self.assertEqual(rows[1].state.blue_x, 40)
+        self.assertEqual({row.outcome for row in rows}, {EpisodeOutcome.SUCCESS})
 
 
 if __name__ == "__main__":

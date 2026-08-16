@@ -5,8 +5,9 @@ from typing import TextIO
 import pygame
 
 from util.coordinate import Coordinate
+from util.data import Demonstration, EpisodeRecorder
 from util.display import Display
-from util.domain import EpisodeOutcome, EpisodeResult
+from util.domain import Action, EpisodeOutcome, EpisodeResult, GameState
 from util.inputs import FromKeyboard
 
 
@@ -22,6 +23,7 @@ class Game:
         seed: int | None = None,
         framerate: int = 60,
         staleness_factor: int = 100,
+        recorder: EpisodeRecorder | None = None,
     ) -> None:
         pygame.init()
         self.input = input if input is not None else FromKeyboard()
@@ -30,6 +32,7 @@ class Game:
         self.framerate = framerate
         self.staleness_factor = staleness_factor
         self.output = output
+        self.recorder = recorder
         self.num_success = 0
         self._game_exit = False
         self._random = random.Random(seed)
@@ -70,13 +73,31 @@ class Game:
         steps = 0
 
         while not self._game_exit:
+            state = GameState(
+                self.display.car.pos.x,
+                self.display.car.pos.y,
+                self.display.parking.pos.x,
+                self.display.parking.pos.y,
+            )
             move = self.input.get_move()
             if getattr(self.input, "quit_requested", False):
                 self._game_exit = True
+                if self.recorder is not None:
+                    self.recorder.discard_episode()
                 return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)
 
             self.display.car.step(move)
             steps += 1
+            if self.recorder is not None:
+                self.recorder.record(
+                    Demonstration(
+                        episode_id=episode_id,
+                        step=steps - 1,
+                        elapsed_ms=pygame.time.get_ticks(),
+                        state=state,
+                        action=Action(move.x, move.y),
+                    )
+                )
             stalled = stalled + 1 if move == Coordinate(0, 0) else 0
             self.render()
 
@@ -101,6 +122,8 @@ class Game:
             self.update_clock()
 
             if outcome is not None:
+                if self.recorder is not None:
+                    self.recorder.finish_episode(outcome)
                 rate = 100 * self.num_success / episode_id
                 print(f"{episode_id}: {rate:.2f}%")
                 return EpisodeResult(episode_id, outcome, steps)

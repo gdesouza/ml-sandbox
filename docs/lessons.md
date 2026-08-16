@@ -4,7 +4,7 @@ Complete the [quick start](quickstart.md) first. Each lesson follows the same sc
 
 ## 1. States and actions
 
-**Objective:** identify features and labels. Collect at least five episodes, then run `python inspect_data.py DATA.csv`. Before inspecting, predict which action will be common when the blue square starts left of the target. In the CSV, compare `blue_x` and `target_x` with `action_x`.
+**Objective:** identify features and labels. Collect at least five episodes, then run `python inspect_data.py DATA.csv`. Before inspecting, predict which action will be common when the blue circle starts left of the target. In the CSV, compare `blue_x` and `target_x` with `action_x`.
 
 **Reflect:** why does an action need both the blue and target positions? What information is absent from the state?
 
@@ -63,4 +63,3 @@ Automated failure replay and dataset merging are planned features; today, keep t
 An optional future model will classify nine combinations: no-op plus the eight cardinal/diagonal directions. Before it is implemented, inspect the action pairs in a CSV and assign each to a class on paper.
 
 **Reflect:** when is continuous regression useful? What does classification gain, and what does it lose? Consider probabilities, class imbalance, and whether speed should vary.
-

@@ -2,7 +2,7 @@
 
 Small, readable experiments for learning machine learning. The active project is
 `game/`, a behavior-cloning exercise in which a neural network learns from human
-demonstrations to move a blue square into a red target.
+demonstrations to move a blue circle into a white, black-bordered target.
 
 Install from the repository root with `python -m pip install -e .`, then launch
 the guided workflow with `python -m behavior_cloning_game`.

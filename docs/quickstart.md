@@ -1,6 +1,6 @@
 # Five-Minute Learner Quick Start
 
-This project teaches **behavior cloning**: record how a person moves the blue square into the red target, then train a neural network to imitate those actions.
+This project teaches **behavior cloning**: record how a person moves the blue circle into the white, black-bordered target, then train a neural network to imitate those actions.
 
 ## 1. Set up
 
@@ -28,7 +28,7 @@ python -m pip install -e .
 python -m behavior_cloning_game
 ```
 
-Choose **Collect demonstrations**. Use the arrow keys to move the blue square fully inside the red square. Complete several episodes and close the window when finished. The terminal prints the saved CSV path.
+Choose **Collect demonstrations**. Use the arrow keys to move the blue circle fully inside the outlined white square. Complete several episodes and close the window when finished. The terminal prints the saved CSV path.
 
 ## 3. Inspect what the model will learn from
 
@@ -48,7 +48,7 @@ Training reserves whole episodes for validation and saves both model weights (`.
 
 ## 5. Evaluate the policy
 
-Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many attempts to watch. The game window shows the learned policy moving the blue box:
+Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many attempts to watch. The game window shows the learned policy moving the blue circle:
 
 ```bash
 python -m behavior_cloning_game evaluate game/data/model_RUN_ID.json -- --episodes 20

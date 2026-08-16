@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository contains small machine-learning experiments. The active project is `game/`, a Pygame application that learns to move a blue square to a target from recorded demonstrations.
+This repository contains small machine-learning experiments. The active project is `game/`, a Pygame application that learns to move a blue circle to a target from recorded demonstrations.
 
 - `game/play.py` records keyboard demonstrations as CSV files.
 - `game/train.py` trains a PyTorch policy and writes a `.pth` checkpoint.

@@ -1,6 +1,6 @@
 # Move Square: Behavior Cloning
 
-Move the blue square fully inside the red target without touching the screen border. While a person plays, the program records game states and actions. A small PyTorch network then learns to imitate those actions.
+Move the blue circle fully inside the white, black-bordered target without touching the screen border. While a person plays, the program records game states and actions. A small PyTorch network then learns to imitate those actions.
 
 ## Learning workflow
 
@@ -42,7 +42,7 @@ The game window opens by default and runs 20 attempts. Change the count with `--
 
 Each recorded row pairs a state with the action the player chose:
 
-- Features `X`: blue-square position (`blue_x`, `blue_y`) and target position (`target_x`, `target_y`)
+- Features `X`: blue-circle bounding-box position (`blue_x`, `blue_y`) and target position (`target_x`, `target_y`)
 - Labels `y`: horizontal and vertical movement (`action_x`, `action_y`)
 - Episode context: step, elapsed time, and outcome
 

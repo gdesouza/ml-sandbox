@@ -183,7 +183,7 @@ def evaluate_policy(
 
 def heuristic_policy(state: GameState, step_size: float = 5) -> Action:
     """A transparent expert that heads for the nearest valid target position."""
-    max_blue_offset = 20  # 70-pixel target minus 50-pixel blue box
+    max_blue_offset = 20  # 70-pixel target minus 50-pixel circle diameter
 
     def movement(position: float, target: float) -> float:
         if position < target:

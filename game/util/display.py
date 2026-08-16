@@ -21,7 +21,12 @@ class Display:
         return self.gameDisplay
     
     def draw_car(self) -> None:
-        self.car.draw(self.gameDisplay)
+        radius = min(self.car.w, self.car.h) // 2
+        center = (
+            round(self.car.pos.x + self.car.w / 2),
+            round(self.car.pos.y + self.car.h / 2),
+        )
+        pygame.draw.circle(self.gameDisplay, self.car.colour, center, radius)
 
     def draw_parking(self) -> None:
         self.parking.draw(self.gameDisplay)

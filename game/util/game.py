@@ -1,117 +1,126 @@
-import signal
-
 import random
 import sys
-import pygame
-import time
+from typing import TextIO
 
-from util.colour import Colour
+import pygame
+
 from util.coordinate import Coordinate
 from util.display import Display
+from util.domain import EpisodeOutcome, EpisodeResult
 from util.inputs import FromKeyboard
-
-def signal_handler(sig, frame):
-    print('Game over.')
-    sys.exit(0)
-signal.signal(signal.SIGINT, signal_handler)
 
 
 class Game:
-    def __init__(self, input=FromKeyboard(), output=sys.stdout) -> None:
-        self.input = input
-        self.display = Display()
+    """Run independent episodes without growing the Python call stack."""
+
+    def __init__(
+        self,
+        input=None,
+        output: TextIO = sys.stdout,
+        *,
+        display=None,
+        seed: int | None = None,
+        framerate: int = 60,
+        staleness_factor: int = 100,
+    ) -> None:
+        pygame.init()
+        self.input = input if input is not None else FromKeyboard()
+        self.display = display if display is not None else Display()
         self.clock = pygame.time.Clock()
-        self.framerate = 60
-        self.display.set_caption('Parking game')
-        self._game_exit = False
-        self.staleness_factor = 100
+        self.framerate = framerate
+        self.staleness_factor = staleness_factor
         self.output = output
         self.num_success = 0
-        
-        pygame.init()
+        self._game_exit = False
+        self._random = random.Random(seed)
+        self.display.set_caption("Parking game")
 
-    
     def is_game_ended(self) -> bool:
         return self._game_exit
 
     def update_clock(self) -> None:
         self.clock.tick(self.framerate)
-        
 
     def fail(self) -> None:
-        self.display.message_display('Failed')
+        self.display.message_display("Failed")
 
     def success(self) -> None:
-        self.display.message_display('Success')
+        self.display.message_display("Success")
 
     def render(self) -> None:
         self.display.set_background()
-        self.display.parking.draw(self.display.get())
-        self.display.car.draw(self.display.get())
+        self.display.draw_parking()
+        self.display.draw_car()
 
-    def start(self, execution_id=0) -> None:
-        execution_id += 1
+    def _reset_episode(self) -> None:
         self.input.reset_move()
+        car_x = (self.display.screen.width - self.display.car.w) / 2
+        car_y = (self.display.screen.height - self.display.car.h) / 2
+        self.display.car.teleport(Coordinate(car_x, car_y))
+        self.input.goto(car_x, car_y)
+
+        target_x = self._random.randint(0, self.display.screen.width - self.display.parking.w)
+        target_y = self._random.randint(0, self.display.screen.height - self.display.parking.h)
+        self.display.parking.teleport(Coordinate(target_x, target_y))
+        self.input.move_target(target_x, target_y)
+
+    def run_episode(self, episode_id: int) -> EpisodeResult:
+        self._reset_episode()
         stalled = 0
+        steps = 0
 
-        # initpos_x = random.randint(0, self.display.screen.width-50)
-        # initpos_y = random.randint(0, self.display.screen.height-50)
-        initpos_x = (self.display.screen.width-50)/2
-        initpos_y = (self.display.screen.height-50)/2
-        self.display.car.teleport(Coordinate(initpos_x,initpos_y))
-        self.input.goto(initpos_x,initpos_y)
-
-        initpos_x = random.randint(0, self.display.screen.width-70)
-        initpos_y = random.randint(0, self.display.screen.height-70)
-        self.display.parking.teleport(Coordinate(initpos_x, initpos_y))
-        self.input.move_target(initpos_x, initpos_y)
-                               
-        while not self.is_game_ended():
-            
+        while not self._game_exit:
             move = self.input.get_move()
-            self.display.car.pos += move
+            if getattr(self.input, "quit_requested", False):
+                self._game_exit = True
+                return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)
 
-            if move == Coordinate(0,0):
-                stalled += 1
-                if stalled > self.staleness_factor:
-                    self.fail()
-                    pygame.display.update()
-                    print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
-                    time.sleep(1)
-                    self.start(execution_id)
-
-            else: 
-                stalled = 0
-
-
+            self.display.car.step(move)
+            steps += 1
+            stalled = stalled + 1 if move == Coordinate(0, 0) else 0
             self.render()
 
+            outcome = None
             if self.display.is_car_inside_parking():
-                self.success()
-                pygame.display.update()
                 self.num_success += 1
-                print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
-                time.sleep(1)
-                self.start(execution_id)
-
-            if self.display.is_car_out_of_bounds():
+                self.success()
+                outcome = EpisodeOutcome.SUCCESS
+            elif self.display.is_car_out_of_bounds():
                 self.fail()
-                pygame.display.update()
-                print(f"{execution_id}: {self.num_success/execution_id:.2f}%")
-                time.sleep(1)
-                self.start(execution_id)
+                outcome = EpisodeOutcome.OUT_OF_BOUNDS
+            elif stalled > self.staleness_factor:
+                self.fail()
+                outcome = EpisodeOutcome.STALLED
 
-
+            print(
+                f"{episode_id},{pygame.time.get_ticks()},{self.display.car},"
+                f"{self.display.parking},{move}",
+                file=self.output,
+            )
             pygame.display.update()
             self.update_clock()
 
-            if move.x > 0 or move.y > 0:
-                print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{move}", file=self.output)
-                #print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{self.display.car.distance(self.display.parking)},{move}", file=self.output)
-                # print(f"{execution_id},{pygame.time.get_ticks()},{self.display.car},{self.display.parking},{Coordinate(self.display.car.x-move.x, self.display.car.y-move.y)}", file=self.output)
+            if outcome is not None:
+                rate = 100 * self.num_success / episode_id
+                print(f"{episode_id}: {rate:.2f}%")
+                return EpisodeResult(episode_id, outcome, steps)
+
+        return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)
+
+    def start(self, execution_id: int = 0, max_episodes: int | None = None) -> list[EpisodeResult]:
+        results = []
+        while not self._game_exit and (max_episodes is None or len(results) < max_episodes):
+            execution_id += 1
+            result = self.run_episode(execution_id)
+            results.append(result)
+            if result.outcome == EpisodeOutcome.QUIT:
+                break
+        return results
 
     def quit(self) -> None:
+        self._game_exit = True
         pygame.quit()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     pass

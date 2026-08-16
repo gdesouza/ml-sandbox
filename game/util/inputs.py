@@ -7,6 +7,7 @@ from util.model import ContinuousPolicyNetwork
 
 class FromKeyboard:
     def __init__(self) -> None:
+        self.quit_requested = False
         self.reset_move()
 
     def reset_move(self) -> None:
@@ -21,8 +22,8 @@ class FromKeyboard:
     def get_move(self) -> object:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+                self.quit_requested = True
+                return Coordinate(0, 0)
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:

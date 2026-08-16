@@ -6,8 +6,15 @@ class Screen:
         self.height = height
         self.background = colour
 
-    def CenterWidth(self) -> int:
-        return self.width/2
+    def center_width(self) -> float:
+        return self.width / 2
     
-    def CenterHeight(self) -> int:
-        return self.height/2
+    def center_height(self) -> float:
+        return self.height / 2
+
+    # Kept for compatibility with the original classroom examples.
+    def CenterWidth(self) -> float:
+        return self.center_width()
+
+    def CenterHeight(self) -> float:
+        return self.center_height()

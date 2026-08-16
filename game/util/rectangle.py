@@ -23,14 +23,14 @@ class Rectangle():
         self.pos += delta
 
     def teleport(self, position: object) -> None:
-        self.pos = position
+        self.pos = Coordinate(position.x, position.y)
 
     def __str__(self) -> str:
         return f"{self.pos.x},{self.pos.y}"
     
     def center(self) -> object:
-        x = (self.x + self.w)/2
-        y = (self.y + self.y)/2
+        x = self.pos.x + self.w / 2
+        y = self.pos.y + self.h / 2
         return Coordinate(x,y)
     
 

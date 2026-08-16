@@ -7,7 +7,7 @@ import pygame
 from util.coordinate import Coordinate
 from util.data import Demonstration, EpisodeRecorder
 from util.display import Display
-from util.domain import Action, EpisodeOutcome, EpisodeResult, GameState
+from util.domain import Action, EpisodeOutcome, EpisodeResult, GameMode, GameState
 from util.inputs import FromKeyboard
 
 
@@ -26,6 +26,7 @@ class Game:
         recorder: EpisodeRecorder | None = None,
         max_steps: int | None = None,
         round_delay_ms: int = 1000,
+        mode: GameMode = GameMode.COLLECTION,
     ) -> None:
         pygame.init()
         self.input = input if input is not None else FromKeyboard()
@@ -37,6 +38,8 @@ class Game:
         self.recorder = recorder
         self.max_steps = max_steps
         self.round_delay_ms = round_delay_ms
+        self.mode = mode
+        self.episode_limit: int | None = None
         self.num_success = 0
         self._game_exit = False
         self._random = random.Random(seed)
@@ -67,17 +70,31 @@ class Game:
     def success(self) -> None:
         self.display.message_display("Success")
 
+    def _hud_text(self, episode_id: int | None) -> str:
+        episode = str(episode_id or "-")
+        if self.episode_limit is not None:
+            episode = f"{episode}/{self.episode_limit}"
+
+        if self.mode == GameMode.EVALUATION:
+            return (
+                "MODEL EVALUATION | Esc Finish | "
+                f"Attempt {episode} | Successes {self.num_success}"
+            )
+
+        samples = self.recorder.written_samples if self.recorder is not None else 0
+        completed = self.recorder.completed_episodes if self.recorder is not None else 0
+        paused = " | PAUSED" if getattr(self.input, "paused", False) else ""
+        return (
+            "COLLECT | Arrows Move | Space Pause | Esc Finish | "
+            f"Ep {episode} | Done {completed} | Samples {samples}{paused}"
+        )
+
     def render(self, episode_id: int | None = None) -> None:
         self.display.set_background()
         self.display.draw_parking()
         self.display.draw_car()
         if hasattr(self.display, "draw_hud"):
-            samples = self.recorder.written_samples if self.recorder is not None else 0
-            paused = " | PAUSED" if getattr(self.input, "paused", False) else ""
-            self.display.draw_hud(
-                f"Arrows: move | Space: pause | Esc: finish | "
-                f"Episode: {episode_id or '-'} | Saved samples: {samples}{paused}"
-            )
+            self.display.draw_hud(self._hud_text(episode_id))
 
     def _reset_episode(self) -> None:
         self.input.reset_move()
@@ -168,6 +185,7 @@ class Game:
         return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)
 
     def start(self, execution_id: int = 0, max_episodes: int | None = None) -> list[EpisodeResult]:
+        self.episode_limit = max_episodes
         results = []
         while not self._game_exit and (max_episodes is None or len(results) < max_episodes):
             execution_id += 1

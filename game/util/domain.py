@@ -30,6 +30,11 @@ class EpisodeOutcome(str, Enum):
     UNKNOWN = "unknown"
 
 
+class GameMode(str, Enum):
+    COLLECTION = "collection"
+    EVALUATION = "evaluation"
+
+
 @dataclass(frozen=True)
 class EpisodeResult:
     episode_id: int

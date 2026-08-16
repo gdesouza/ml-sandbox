@@ -9,7 +9,7 @@ from pathlib import Path
 
 import torch
 
-from util.domain import EvaluationConfig
+from util.domain import EvaluationConfig, GameMode
 from util.evaluation import (
     compare_experiments,
     evaluate_policy,
@@ -85,6 +85,7 @@ def _watch_model(model: ContinuousPolicyNetwork, config: EvaluationConfig, name:
         output=io.StringIO(),
         seed=config.seed,
         max_steps=config.max_steps,
+        mode=GameMode.EVALUATION,
     )
     try:
         results = game.start(max_episodes=config.episodes)

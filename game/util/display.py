@@ -56,7 +56,7 @@ class Display:
             hud_rectangle,
             width=2,
         )
-        font = pygame.font.Font(None, 24)
+        font = pygame.font.Font(None, 18)
         surface, rectangle = self.text_objects(text, font)
         rectangle.topleft = (10, 10)
         self.gameDisplay.blit(surface, rectangle)

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from util.coordinate import Coordinate
 from util.data import EpisodeRecorder, load_demonstrations
-from util.domain import EpisodeOutcome
+from util.domain import EpisodeOutcome, GameMode
 from util.game import Game
 from util.rectangle import Rectangle
 from util.screen import Screen
@@ -63,6 +63,45 @@ class FakeDisplay:
 
 
 class GameLifecycleTests(unittest.TestCase):
+    def test_collection_hud_shows_player_controls_and_data_progress(self):
+        game = Game(
+            FakeInput(),
+            io.StringIO(),
+            display=FakeDisplay(),
+            framerate=0,
+            round_delay_ms=0,
+            mode=GameMode.COLLECTION,
+        )
+        game.episode_limit = 10
+
+        text = game._hud_text(3)
+
+        self.assertIn("COLLECT", text)
+        self.assertIn("Arrows Move", text)
+        self.assertIn("Space Pause", text)
+        self.assertIn("Ep 3/10", text)
+        self.assertIn("Samples 0", text)
+
+    def test_evaluation_hud_hides_player_controls_and_shows_results(self):
+        game = Game(
+            FakeInput(),
+            io.StringIO(),
+            display=FakeDisplay(),
+            framerate=0,
+            round_delay_ms=0,
+            mode=GameMode.EVALUATION,
+        )
+        game.episode_limit = 5
+        game.num_success = 2
+
+        text = game._hud_text(4)
+
+        self.assertIn("MODEL EVALUATION", text)
+        self.assertIn("Attempt 4/5", text)
+        self.assertIn("Successes 2", text)
+        self.assertNotIn("Arrows", text)
+        self.assertNotIn("pause", text.lower())
+
     @patch("util.game.pygame.display.update")
     def test_many_episodes_are_iterative_and_report_a_true_percentage(self, update):
         display = FakeDisplay([True] * 1100)

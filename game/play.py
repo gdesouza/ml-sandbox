@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from util.data import EpisodeRecorder
+from util.domain import GameMode
 from util.game import Game
 
 
@@ -16,7 +17,7 @@ def main() -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     destination = args.output or Path(__file__).parent / "data" / f"demonstrations_{timestamp}.csv"
     recorder = EpisodeRecorder(destination)
-    game = Game(seed=args.seed, recorder=recorder)
+    game = Game(seed=args.seed, recorder=recorder, mode=GameMode.COLLECTION)
     try:
         results = game.start(max_episodes=args.episodes)
     finally:

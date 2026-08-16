@@ -1,102 +1,65 @@
-# Move Square Game
+# Move Square: Behavior Cloning
 
-## Description
+Move the blue square fully inside the red target without touching the screen border. While a person plays, the program records game states and actions. A small PyTorch network then learns to imitate those actions.
 
-The goal is to move the blue square into the red square without touching the borders of the screen.
+## Learning workflow
 
-The initial positions are random and there are no obstacles.
+From the repository root, create and activate a virtual environment, then install the package:
 
-## Quick Start
-
-### Initialize virtual environment
-
-#### Create a virtual environment 
-python -m venv myenv
-
-#### Activate the virtual environment
-
-- Windows
-```
-myenv\Scripts\activate
+```bash
+python3 -m venv venv
+source venv/bin/activate          # macOS/Linux
+# venv\Scripts\Activate.ps1       # Windows PowerShell
+python -m pip install -e .
 ```
 
-- macOS and Linux
-```
-source myenv/bin/activate
-```
+Open the beginner menu:
 
-#### Install requirements
-```
-pip install -r requirements.txt
+```bash
+python -m behavior_cloning_game
 ```
 
-### Collect demonstrations
+The original scripts remain useful for seeing each step explicitly. Run them from `game/`:
 
-- Run `play.py` and play the game. Make sure to succeed and collect good samples.
-- Press `<CTRL+C>` on the terminal window when done. 
-- The demonstrations will be stored inside the data directory. The file name will be `demonstrations_<date>_<time>.csv`.
-
-### Train your model
-
-- To train the model, execute `train.py <filename>`, where `filename` is the demonstrations file name without the extension (remove .csv).
-- After the model is trained, it will be saved as `demonstrations_<date>_<time>.pth`. 
-- You can change the hyperparameters or adjust the training parameters in:
-    - `util/model.py`
-    - `train.py`
-- You can retrain as many times as you want, but please keep in mind that it will rewrite the old model. If you want to save as a different name you will have to rename the CSV file.
-
-### Execute the game 
-
-- To execute the game using the trained model, run `execute.py <filename>`, where `filename` is the demonstrations file name without the extension (remove .csv).
-
-That's it. Now you can iterate over this cycle (play, train, execute) adjusting the model and parameters to try to improve the model and obtain a higher success rate.
-
-## Game Class Diagram
-> _Install Markdown Preview to see the diagrams in VS Code_
-
-```mermaid
-
-classDiagram
-    Game o-- Input
-    Game o-- Display
-    Game : start()
-    Game : is_game_ended()
-    Game : success()
-    Game : fail()
-    Game : render()
-
-    Input : reset_move()
-    Input: goto()
-    Input: move_target()
-    Input: get_move()
-    Input <|-- FromKeyboard
-    Input <|-- FromModel
-
-    FromModel : ContinuousPolicyNetwork model
-    FromModel : Tensor state 
-    FromModel o-- ContinuousPolicyNetwork
-    ContinuousPolicyNetwork: forward()
-
-
-    Display o-- Screen
-    Screen : int width
-    Screen : int height
-    Screen : int background_colour
-    
-    Display o-- Rectangle
-
-    Display : is_car_inside_parking()
-    Display : is_car_out_of_bounds()
-
-    Rectangle : move()
-    Rectangle : go_to()
-    Rectangle: Coordinate pos 
-    Rectangle: int w
-    Rectangle: int h
-
-    Rectangle o-- Coordinate
-    Coordinate:x
-    Coordinate: y
-
-
+```bash
+cd game
+python play.py --episodes 10 --seed 7
+python inspect_data.py data/demonstrations_YYYYMMDD_HHMMSS.csv
+python train.py data/demonstrations_YYYYMMDD_HHMMSS.csv --preset quick
 ```
+
+`train.py --help` lists configurable epochs, learning rate, batch size, hidden size/layers, validation fraction, seed, and output directory. The trainer splits whole episodes into training and validation sets, normalizes position features, and saves portable `.pth` weights plus self-describing `.json` metadata.
+
+Watch the trained model using the printed weights path without `.pth`:
+
+```bash
+python execute.py data/model_RUN_ID
+```
+
+The current evaluation is interactive. Observe a fixed number of attempts when comparing models so the comparison is fair.
+
+## What the data means
+
+Each recorded row pairs a state with the action the player chose:
+
+- Features `X`: blue-square position (`blue_x`, `blue_y`) and target position (`target_x`, `target_y`)
+- Labels `y`: horizontal and vertical movement (`action_x`, `action_y`)
+- Episode context: step, elapsed time, and outcome
+
+Use `inspect_data.py` before training to find sparse, repetitive, or directionally biased demonstrations. The current network predicts continuous action values and trains with mean squared error (MSE).
+
+## Teaching materials
+
+- [Five-minute quick start](../docs/quickstart.md)
+- [Seven guided lessons](../docs/lessons.md)
+- [Instructor guide](../docs/instructor-guide.md)
+
+The unified command-line menu and finite seeded evaluation are available now. A graphical menu, automated corrective-demonstration workflow, comparison charts, and optional nine-class action model remain planned extensions; they are not required for the current workflow.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Keep reusable behavior in `util/`, orchestration in the entry scripts, and generated learning artifacts out of version control unless they are intentional fixtures.

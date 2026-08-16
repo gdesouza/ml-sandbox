@@ -79,7 +79,11 @@ class FromModel:
         device = accel_device()
         state_dict = torch.load(filename, map_location=device, weights_only=True)
         hidden_layers = 4 if "fc3.weight" in state_dict else 2
-        self.model = ContinuousPolicyNetwork(hidden_layers=hidden_layers)
+        hidden_size = int(state_dict["fc1.weight"].shape[0])
+        self.model = ContinuousPolicyNetwork(
+            hidden_size=hidden_size,
+            hidden_layers=hidden_layers,
+        )
         self.model.load_state_dict(state_dict)
         self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=device)
         self.reset_move()

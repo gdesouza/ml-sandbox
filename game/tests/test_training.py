@@ -84,6 +84,18 @@ class TrainingTests(unittest.TestCase):
         for name, value in first.model.state_dict().items():
             self.assertTrue(torch.equal(value, second.model.state_dict()[name]))
 
+    def test_training_reports_each_epoch(self):
+        updates = []
+        train_policy(
+            self.rows,
+            self.config,
+            progress=lambda epoch, train_loss, validation_loss: updates.append(
+                (epoch, train_loss, validation_loss)
+            ),
+        )
+        self.assertEqual([update[0] for update in updates], [1, 2, 3])
+        self.assertTrue(all(update[1] >= 0 and update[2] >= 0 for update in updates))
+
     def test_artifact_round_trip_is_cpu_portable_and_self_describing(self):
         result = train_policy(self.rows, self.config)
         sample = torch.tensor([self.rows[0].state.features()], dtype=torch.float32)

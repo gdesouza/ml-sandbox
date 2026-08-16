@@ -13,7 +13,7 @@ import platform
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import torch
 from torch import nn
@@ -108,6 +108,7 @@ def train_policy(
     config: TrainingConfig = TrainingConfig(),
     *,
     device: str | torch.device = "cpu",
+    progress: Callable[[int, float, float], None] | None = None,
 ) -> TrainingResult:
     """Train on normalized positions and retain the best validation model."""
     config.validate()
@@ -173,6 +174,8 @@ def train_policy(
             prediction = model(validation_x.to(target_device))
             validation_loss = criterion(prediction, validation_y.to(target_device)).item()
         validation_losses.append(validation_loss)
+        if progress is not None:
+            progress(epoch + 1, train_losses[-1], validation_loss)
         if validation_loss < best_loss:
             best_loss = validation_loss
             best_epoch = epoch + 1

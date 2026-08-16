@@ -32,6 +32,9 @@ class DatasetTests(unittest.TestCase):
                 )
 
             self.assertEqual(recorder.finish_episode(EpisodeOutcome.SUCCESS), len(actions))
+            self.assertEqual(recorder.completed_episodes, 1)
+            self.assertEqual(recorder.written_samples, len(actions))
+            self.assertEqual(recorder.buffered_samples, 0)
             loaded, legacy = load_demonstrations(path)
 
         self.assertFalse(legacy)

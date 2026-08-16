@@ -73,6 +73,20 @@ def interactive_menu() -> int:
                 print("A path is required.")
                 continue
             arguments.append(artifact)
+        if command == "train":
+            preset = input("Preset [quick/balanced/explore] (balanced): ").strip().lower()
+            if preset:
+                if preset not in {"quick", "balanced", "explore"}:
+                    print("Choose quick, balanced, or explore.")
+                    continue
+                arguments.extend(["--preset", preset])
+        if command == "evaluate":
+            episodes = input("Evaluation episodes (20): ").strip()
+            if episodes:
+                if not episodes.isdigit() or int(episodes) < 1:
+                    print("Episodes must be a positive whole number.")
+                    continue
+                arguments.extend(["--episodes", episodes])
         status = run_workflow(command, arguments)
         if status:
             print(f"The {command} step exited with status {status}.")

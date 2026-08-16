@@ -32,3 +32,19 @@ def test_subcommand_forwards_arguments():
 def test_menu_can_exit(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "5")
     assert cli.interactive_menu() == 0
+
+
+def test_menu_collects_training_preset(monkeypatch):
+    answers = iter(["3", "dataset.csv", "quick", "5"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    with patch("behavior_cloning_game.cli.run_workflow", return_value=0) as run:
+        assert cli.interactive_menu() == 0
+    run.assert_called_once_with("train", ["dataset.csv", "--preset", "quick"])
+
+
+def test_menu_collects_evaluation_episode_count(monkeypatch):
+    answers = iter(["4", "model.json", "12", "5"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    with patch("behavior_cloning_game.cli.run_workflow", return_value=0) as run:
+        assert cli.interactive_menu() == 0
+    run.assert_called_once_with("evaluate", ["model.json", "--episodes", "12"])

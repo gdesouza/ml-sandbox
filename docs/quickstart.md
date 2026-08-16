@@ -46,12 +46,12 @@ Choose **Train a model** and paste the dataset path. This uses the Balanced pres
 
 Training reserves whole episodes for validation and saves both model weights (`.pth`) and experiment details (`.json`). Try `--preset balanced` when you have more demonstrations.
 
-## 5. Watch the policy
+## 5. Evaluate the policy
 
-Choose **Evaluate a model** and enter the `.pth` path printed by training, without its extension. The equivalent direct command is:
+Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many seeded episodes to run. The equivalent direct command is:
 
 ```bash
-python -m behavior_cloning_game evaluate game/data/model_RUN_ID
+python -m behavior_cloning_game evaluate game/data/model_RUN_ID.json -- --episodes 20
 ```
 
-Watch several attempts. A low validation loss does not guarantee successful play: the model may encounter states missing from your demonstrations.
+Compare its success count, success rate, successful-step average, and failure reasons. A low validation loss does not guarantee successful play: the model may encounter states missing from your demonstrations.

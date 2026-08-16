@@ -66,6 +66,12 @@ class EpisodeRecorder:
     def __init__(self, destination: str | Path):
         self.destination = Path(destination)
         self._buffer: list[Demonstration] = []
+        self.completed_episodes = 0
+        self.written_samples = 0
+
+    @property
+    def buffered_samples(self) -> int:
+        return len(self._buffer)
 
     def record(self, demonstration: Demonstration) -> None:
         self._buffer.append(demonstration)
@@ -83,6 +89,8 @@ class EpisodeRecorder:
             if not exists:
                 writer.writeheader()
             writer.writerows(row.as_row() for row in completed)
+        self.completed_episodes += 1
+        self.written_samples += len(completed)
         return len(completed)
 
     def discard_episode(self) -> None:

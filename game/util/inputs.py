@@ -8,6 +8,7 @@ from util.model import ContinuousPolicyNetwork
 class FromKeyboard:
     def __init__(self) -> None:
         self.quit_requested = False
+        self.paused = False
         self.reset_move()
 
     def reset_move(self) -> None:
@@ -26,7 +27,13 @@ class FromKeyboard:
                 return Coordinate(0, 0)
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_ESCAPE:
+                    self.quit_requested = True
+                    return Coordinate(0, 0)
+                if event.key == pygame.K_SPACE:
+                    self.paused = not self.paused
+                    self.move = Coordinate(0, 0)
+                elif event.key == pygame.K_LEFT:
                     self.move.x = -5
                 elif event.key == pygame.K_RIGHT:
                     self.move.x = 5

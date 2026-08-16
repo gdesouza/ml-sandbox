@@ -50,10 +50,17 @@ class Game:
     def success(self) -> None:
         self.display.message_display("Success")
 
-    def render(self) -> None:
+    def render(self, episode_id: int | None = None) -> None:
         self.display.set_background()
         self.display.draw_parking()
         self.display.draw_car()
+        if hasattr(self.display, "draw_hud"):
+            samples = self.recorder.written_samples if self.recorder is not None else 0
+            paused = " | PAUSED" if getattr(self.input, "paused", False) else ""
+            self.display.draw_hud(
+                f"Arrows: move | Space: pause | Esc: finish | "
+                f"Episode: {episode_id or '-'} | Saved samples: {samples}{paused}"
+            )
 
     def _reset_episode(self) -> None:
         self.input.reset_move()
@@ -86,6 +93,12 @@ class Game:
                     self.recorder.discard_episode()
                 return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)
 
+            if getattr(self.input, "paused", False):
+                self.render(episode_id)
+                pygame.display.update()
+                self.update_clock()
+                continue
+
             self.display.car.step(move)
             steps += 1
             if self.recorder is not None:
@@ -99,7 +112,7 @@ class Game:
                     )
                 )
             stalled = stalled + 1 if move == Coordinate(0, 0) else 0
-            self.render()
+            self.render(episode_id)
 
             outcome = None
             if self.display.is_car_inside_parking():

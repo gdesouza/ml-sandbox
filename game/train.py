@@ -49,7 +49,18 @@ def main(argv: list[str] | None = None) -> int:
     dataset_path = _dataset_path(args.dataset)
     try:
         rows, legacy = load_demonstrations(dataset_path)
-        result = train_policy(rows, config)
+        print(
+            f"Training with {args.preset} preset: {config.epochs} epochs, "
+            f"learning rate {config.learning_rate}, batch size {config.batch_size}."
+        )
+        result = train_policy(
+            rows,
+            config,
+            progress=lambda epoch, train_loss, validation_loss: print(
+                f"Epoch {epoch}/{config.epochs} - "
+                f"train loss: {train_loss:.6f}, validation loss: {validation_loss:.6f}"
+            ),
+        )
         weights, metadata = save_artifact(result, args.output_dir or dataset_path.parent)
     except (DatasetError, ValueError, FileExistsError) as error:
         print(f"Training could not start: {error}")

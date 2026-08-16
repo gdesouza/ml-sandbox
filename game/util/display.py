@@ -36,6 +36,12 @@ class Display:
         TextRect.center = (self.screen.CenterWidth(), self.screen.CenterHeight())
         self.gameDisplay.blit(TextSurf, TextRect)
 
+    def draw_hud(self, text: str) -> None:
+        font = pygame.font.Font(None, 24)
+        surface, rectangle = self.text_objects(text, font)
+        rectangle.topleft = (10, 10)
+        self.gameDisplay.blit(surface, rectangle)
+
     def is_car_inside_parking(self) -> bool:
         return (self.car.pos.x >= self.parking.pos.x) and (self.car.pos.x+self.car.w <= self.parking.pos.x+self.parking.w) and \
                 (self.car.pos.y >= self.parking.pos.y) and (self.car.pos.y+self.car.h <= self.parking.pos.y+self.parking.h)
@@ -43,5 +49,4 @@ class Display:
     def is_car_out_of_bounds(self) -> bool:
         return (self.car.pos.x > self.screen.width - self.car.w or self.car.pos.x < 0) or \
                 (self.car.pos.y > self.screen.height - self.car.h or self.car.pos.y < 0)
-
 

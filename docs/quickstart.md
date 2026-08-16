@@ -40,6 +40,14 @@ python -m behavior_cloning_game inspect game/data/demonstrations_YYYYMMDD_HHMMSS
 
 Look for the four state features (`blue_x`, `blue_y`, `target_x`, `target_y`) and the two action labels (`action_x`, `action_y`). Check whether one movement direction dominates.
 
+To collect more examples in the same compatible dataset later, run:
+
+```bash
+python game/play.py --dataset game/data/demonstrations_YYYYMMDD_HHMMSS.csv
+```
+
+Episode numbering continues from the highest existing episode. The command validates the schema before opening the game.
+
 ## 4. Train
 
 Choose **Train a model** and paste the dataset path. This uses the Balanced preset. For a faster direct run with explicit options, use `python -m behavior_cloning_game train game/data/FILE.csv -- --preset quick`.

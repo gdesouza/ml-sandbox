@@ -63,11 +63,17 @@ class Demonstration:
 
 
 class EpisodeRecorder:
-    def __init__(self, destination: str | Path):
+    def __init__(
+        self,
+        destination: str | Path,
+        *,
+        completed_episodes: int = 0,
+        written_samples: int = 0,
+    ):
         self.destination = Path(destination)
         self._buffer: list[Demonstration] = []
-        self.completed_episodes = 0
-        self.written_samples = 0
+        self.completed_episodes = completed_episodes
+        self.written_samples = written_samples
 
     @property
     def buffered_samples(self) -> int:

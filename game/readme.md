@@ -28,6 +28,14 @@ python inspect_data.py data/demonstrations_YYYYMMDD_HHMMSS.csv
 python train.py data/demonstrations_YYYYMMDD_HHMMSS.csv --preset quick
 ```
 
+To add demonstrations to a schema-v2 dataset, resume it explicitly:
+
+```bash
+python play.py --dataset data/demonstrations_YYYYMMDD_HHMMSS.csv
+```
+
+The collector validates the file and continues numbering after its highest episode ID. Legacy datasets are readable for training but cannot be appended to because they do not contain schema and outcome columns.
+
 `train.py --help` lists configurable epochs, learning rate, batch size, hidden size/layers, validation fraction, seed, and output directory. The trainer splits whole episodes into training and validation sets, normalizes position features, and saves portable `.pth` weights plus self-describing `.json` metadata.
 
 Watch the trained model using the printed weights path without `.pth`:

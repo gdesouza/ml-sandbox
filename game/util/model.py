@@ -6,20 +6,25 @@ from util.acceleration import accel_device
 
 
 class ContinuousPolicyNetwork(nn.Module):
-    def __init__(self, input_size=4, hidden_size=64, output_size=2):
+    def __init__(self, input_size=4, hidden_size=64, output_size=2, hidden_layers=4):
         super(ContinuousPolicyNetwork, self).__init__()
+        if hidden_layers not in (2, 4):
+            raise ValueError("hidden_layers must be 2 or 4")
+
         gpu = accel_device()
         self.fc1 = nn.Linear(input_size, hidden_size, device=gpu)
         self.fc2 = nn.Linear(hidden_size, hidden_size, device=gpu)
-        self.fc3 = nn.Linear(hidden_size, hidden_size, device=gpu)
-        self.fc4 = nn.Linear(hidden_size, hidden_size, device=gpu)
+        if hidden_layers == 4:
+            self.fc3 = nn.Linear(hidden_size, hidden_size, device=gpu)
+            self.fc4 = nn.Linear(hidden_size, hidden_size, device=gpu)
         self.out = nn.Linear(hidden_size, output_size, device=gpu)
         
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
+        if hasattr(self, "fc3"):
+            x = F.relu(self.fc3(x))
+            x = F.relu(self.fc4(x))
 
         # Output move_x, move_y directly as continuous values
         x = self.out(x)

@@ -75,9 +75,12 @@ class FromFile:
 
 class FromModel:
     def __init__(self, filename, init_pos_blue, init_pos_red) -> None:
-        self.model = ContinuousPolicyNetwork()
-        self.model.load_state_dict(torch.load(filename))
-        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=accel_device())
+        device = accel_device()
+        state_dict = torch.load(filename, map_location=device, weights_only=True)
+        hidden_layers = 4 if "fc3.weight" in state_dict else 2
+        self.model = ContinuousPolicyNetwork(hidden_layers=hidden_layers)
+        self.model.load_state_dict(state_dict)
+        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=device)
         self.reset_move()
 
     def reset_move(self) -> None:
@@ -105,4 +108,4 @@ class FromModel:
             self.state[1] = self.state[1] + next_move[0,1]
             self.move = Coordinate(next_move[0,0].item(),next_move[0,1].item())
 
-        return self.move 
+        return self.move

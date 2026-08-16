@@ -9,7 +9,7 @@ class Display:
         self.screen = Screen()
         self.gameDisplay = pygame.display.set_mode((self.screen.width,self.screen.height))
         self.car = Rectangle((self.screen.width * 0.45),(self.screen.height * 0.8),50,50,Colour.BLOCK)
-        self.parking = Rectangle(0,0,70,70,Colour.RED)
+        self.parking = Rectangle(0, 0, 70, 70, Colour.WHITE)
 
     def set_caption(self, text: str) -> None:
         pygame.display.set_caption(text)
@@ -25,6 +25,12 @@ class Display:
 
     def draw_parking(self) -> None:
         self.parking.draw(self.gameDisplay)
+        pygame.draw.rect(
+            self.gameDisplay,
+            Colour.BLACK,
+            self.parking.dim(),
+            width=3,
+        )
 
     def text_objects(self, text, font):
         textSurface = font.render(text, True, Colour.BLACK)
@@ -49,4 +55,3 @@ class Display:
     def is_car_out_of_bounds(self) -> bool:
         return (self.car.pos.x > self.screen.width - self.car.w or self.car.pos.x < 0) or \
                 (self.car.pos.y > self.screen.height - self.car.h or self.car.pos.y < 0)
-

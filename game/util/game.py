@@ -25,6 +25,7 @@ class Game:
         staleness_factor: int = 100,
         recorder: EpisodeRecorder | None = None,
         max_steps: int | None = None,
+        round_delay_ms: int = 1000,
     ) -> None:
         pygame.init()
         self.input = input if input is not None else FromKeyboard()
@@ -35,6 +36,7 @@ class Game:
         self.output = output
         self.recorder = recorder
         self.max_steps = max_steps
+        self.round_delay_ms = round_delay_ms
         self.num_success = 0
         self._game_exit = False
         self._random = random.Random(seed)
@@ -45,6 +47,19 @@ class Game:
 
     def update_clock(self) -> None:
         self.clock.tick(self.framerate)
+
+    def _wait_between_rounds(self) -> None:
+        if self.round_delay_ms <= 0:
+            return
+        deadline = pygame.time.get_ticks() + self.round_delay_ms
+        while not self._game_exit and pygame.time.get_ticks() < deadline:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (
+                    event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                ):
+                    self._game_exit = True
+                    break
+            self.clock.tick(60)
 
     def fail(self) -> None:
         self.display.message_display("Failed")
@@ -144,6 +159,7 @@ class Game:
                     self.recorder.finish_episode(outcome)
                 rate = 100 * self.num_success / episode_id
                 print(f"{episode_id}: {rate:.2f}%")
+                self._wait_between_rounds()
                 return EpisodeResult(episode_id, outcome, steps)
 
         return EpisodeResult(episode_id, EpisodeOutcome.QUIT, steps)

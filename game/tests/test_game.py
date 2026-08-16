@@ -67,7 +67,14 @@ class GameLifecycleTests(unittest.TestCase):
     def test_many_episodes_are_iterative_and_report_a_true_percentage(self, update):
         display = FakeDisplay([True] * 1100)
         output = io.StringIO()
-        game = Game(FakeInput(), output, display=display, seed=7, framerate=0)
+        game = Game(
+            FakeInput(),
+            output,
+            display=display,
+            seed=7,
+            framerate=0,
+            round_delay_ms=0,
+        )
 
         with patch("builtins.print") as print_message:
             results = game.start(max_episodes=1100)
@@ -87,6 +94,7 @@ class GameLifecycleTests(unittest.TestCase):
             seed=1,
             framerate=0,
             staleness_factor=0,
+            round_delay_ms=0,
         )
 
         result = game.run_episode(1)
@@ -100,8 +108,22 @@ class GameLifecycleTests(unittest.TestCase):
     def test_seed_reproduces_target_positions(self):
         first_input = FakeInput()
         second_input = FakeInput()
-        first = Game(first_input, io.StringIO(), display=FakeDisplay(), seed=42, framerate=0)
-        second = Game(second_input, io.StringIO(), display=FakeDisplay(), seed=42, framerate=0)
+        first = Game(
+            first_input,
+            io.StringIO(),
+            display=FakeDisplay(),
+            seed=42,
+            framerate=0,
+            round_delay_ms=0,
+        )
+        second = Game(
+            second_input,
+            io.StringIO(),
+            display=FakeDisplay(),
+            seed=42,
+            framerate=0,
+            round_delay_ms=0,
+        )
 
         first._reset_episode()
         second._reset_episode()
@@ -120,6 +142,7 @@ class GameLifecycleTests(unittest.TestCase):
                 seed=1,
                 framerate=0,
                 recorder=EpisodeRecorder(path),
+                round_delay_ms=0,
             )
 
             result = game.run_episode(1)
@@ -131,6 +154,21 @@ class GameLifecycleTests(unittest.TestCase):
         self.assertEqual(rows[0].state.blue_x, 45)
         self.assertEqual(rows[1].state.blue_x, 40)
         self.assertEqual({row.outcome for row in rows}, {EpisodeOutcome.SUCCESS})
+
+    @patch("util.game.pygame.display.update")
+    def test_waits_after_showing_round_result(self, update):
+        game = Game(
+            FakeInput([Coordinate(0, 0)]),
+            io.StringIO(),
+            display=FakeDisplay([True]),
+            seed=1,
+            framerate=0,
+        )
+
+        with patch.object(game, "_wait_between_rounds") as wait:
+            game.run_episode(1)
+
+        wait.assert_called_once_with()
 
 
 if __name__ == "__main__":

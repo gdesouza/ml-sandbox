@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 import tempfile
 import unittest
 from pathlib import Path
@@ -186,6 +187,21 @@ class TrainingTests(unittest.TestCase):
             self.assertTrue(metadata["normalization"]["baked_into_first_layer"])
             self.assertEqual(next(loaded.model.parameters()).device.type, "cpu")
             self.assertTrue(torch.equal(expected, actual))
+
+    def test_relative_feature_artifact_restores_inference_transform(self):
+        config = replace(self.config, feature_transform="relative-center")
+        result = train_policy(self.rows, config)
+        with tempfile.TemporaryDirectory() as directory:
+            _, metadata_path = save_artifact(result, directory)
+            loaded = load_artifact(metadata_path)
+
+        self.assertEqual(result.model.fc1.in_features, 2)
+        self.assertEqual(loaded.model.fc1.in_features, 2)
+        self.assertEqual(loaded.feature_transform.name, "relative-center")
+        self.assertEqual(
+            loaded.metadata["features"],
+            ["relative_center_x", "relative_center_y"],
+        )
 
     def test_artifact_refuses_to_overwrite_same_experiment(self):
         result = train_policy(self.rows, self.config)

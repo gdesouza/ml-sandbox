@@ -51,6 +51,7 @@ class TrainingConfig:
     hidden_layers: int = 2
     validation_fraction: float = 0.2
     seed: int = 42
+    feature_transform: str = "absolute"
 
     def validate(self) -> None:
         if self.epochs < 1:
@@ -65,6 +66,15 @@ class TrainingConfig:
             raise ValueError("hidden_layers must be 2 or 4")
         if not 0 < self.validation_fraction < 1:
             raise ValueError("validation_fraction must be between 0 and 1")
+        if self.feature_transform not in {
+            "absolute",
+            "relative-center",
+            "relative-containment",
+        }:
+            raise ValueError(
+                "feature_transform must be absolute, relative-center, "
+                "or relative-containment"
+            )
 
 
 @dataclass(frozen=True)

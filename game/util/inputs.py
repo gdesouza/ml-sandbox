@@ -4,6 +4,8 @@ import torch
 from util.acceleration import accel_device
 from util.coordinate import Coordinate
 from util.model import ContinuousPolicyNetwork
+from util.domain import GameState
+from util.features import FeatureTransform, get_feature_transform
 
 class FromKeyboard:
     def __init__(self) -> None:
@@ -92,18 +94,41 @@ class FromModel:
             hidden_layers=hidden_layers,
         )
         self.model.load_state_dict(state_dict)
-        self._initialize_state(init_pos_blue, init_pos_red, device)
+        self._initialize_state(
+            init_pos_blue,
+            init_pos_red,
+            device,
+            get_feature_transform("absolute"),
+        )
 
     @classmethod
-    def from_model(cls, model, init_pos_blue, init_pos_red):
+    def from_model(
+        cls,
+        model,
+        init_pos_blue,
+        init_pos_red,
+        feature_transform: FeatureTransform | None = None,
+    ):
         instance = cls.__new__(cls)
         instance.model = model
         device = next(model.parameters()).device
-        instance._initialize_state(init_pos_blue, init_pos_red, device)
+        instance._initialize_state(
+            init_pos_blue,
+            init_pos_red,
+            device,
+            feature_transform or get_feature_transform("absolute"),
+        )
         return instance
 
-    def _initialize_state(self, init_pos_blue, init_pos_red, device) -> None:
+    def _initialize_state(
+        self,
+        init_pos_blue,
+        init_pos_red,
+        device,
+        feature_transform: FeatureTransform,
+    ) -> None:
         self.device = device
+        self.feature_transform = feature_transform
         self.initial_state = torch.tensor(
             [init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y],
             dtype=torch.float32,
@@ -138,7 +163,13 @@ class FromModel:
     def get_move(self) -> object:
         self.model.eval()
         with torch.no_grad():
-            next_move = self.model(self.state.unsqueeze(0))  # add batch dimension
+            game_state = GameState(*(float(value) for value in self.state))
+            features = torch.tensor(
+                self.feature_transform.apply(game_state),
+                dtype=torch.float32,
+                device=self.device,
+            )
+            next_move = self.model(features.unsqueeze(0))
             next_move = torch.round(next_move) #+ 10*torch.rand(next_move.shape, device=accel_device())
             self.state[0] = self.state[0] + next_move[0,0] 
             self.state[1] = self.state[1] + next_move[0,1]

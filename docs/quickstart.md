@@ -62,6 +62,15 @@ python -m behavior_cloning_game train game/data/FILE.csv -- --downsample drop-no
 
 The original CSV and validation rows remain unchanged, making the comparison reproducible.
 
+You can also compare state representations without changing the CSV:
+
+```bash
+python -m behavior_cloning_game train game/data/FILE.csv -- --features relative-center
+python -m behavior_cloning_game train game/data/FILE.csv -- --features relative-containment
+```
+
+When using relative features, evaluate the generated `.json` file so inference restores the correct transformation.
+
 ## 5. Evaluate the policy
 
 Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many attempts to watch. The game window shows the learned policy moving the blue circle:

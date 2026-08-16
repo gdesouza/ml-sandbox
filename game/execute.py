@@ -22,6 +22,7 @@ from util.model import ContinuousPolicyNetwork
 from util.coordinate import Coordinate
 from util.game import Game
 from util.inputs import FromModel
+from util.features import FeatureTransform, get_feature_transform
 from util.training import load_artifact
 
 
@@ -30,8 +31,17 @@ def _legacy_model(path: Path) -> ContinuousPolicyNetwork:
         state_dict = torch.load(path, map_location="cpu", weights_only=True)
         hidden_layers = 4 if "fc3.weight" in state_dict else 2
         hidden_size = int(state_dict["fc1.weight"].shape[0])
+        input_size = int(state_dict["fc1.weight"].shape[1])
+        if input_size != 4:
+            raise ValueError(
+                "this checkpoint uses transformed features that cannot be identified "
+                "from weights alone; use its paired .json experiment file"
+            )
         model = ContinuousPolicyNetwork(
-            hidden_size=hidden_size, hidden_layers=hidden_layers, device="cpu"
+            input_size=input_size,
+            hidden_size=hidden_size,
+            hidden_layers=hidden_layers,
+            device="cpu",
         )
         model.load_state_dict(state_dict)
     except (OSError, KeyError, RuntimeError, ValueError) as error:
@@ -40,14 +50,16 @@ def _legacy_model(path: Path) -> ContinuousPolicyNetwork:
     return model
 
 
-def _resolve_model(argument: str) -> tuple[ContinuousPolicyNetwork, str | None]:
+def _resolve_model(
+    argument: str,
+) -> tuple[ContinuousPolicyNetwork, str | None, FeatureTransform]:
     path = Path(argument)
     if path.suffix == ".json":
         loaded = load_artifact(path)
-        return loaded.model, str(path)
+        return loaded.model, str(path), loaded.feature_transform
     if not path.suffix:
         path = path.with_suffix(".pth")
-    return _legacy_model(path), None
+    return _legacy_model(path), None, get_feature_transform("absolute")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,11 +86,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _watch_model(model: ContinuousPolicyNetwork, config: EvaluationConfig, name: str) -> None:
+def _watch_model(
+    model: ContinuousPolicyNetwork,
+    config: EvaluationConfig,
+    name: str,
+    feature_transform: FeatureTransform,
+) -> None:
     controller = FromModel.from_model(
         model,
         Coordinate(375, 275),
         Coordinate(0, 0),
+        feature_transform,
     )
     game = Game(
         input=controller,
@@ -108,19 +126,20 @@ def main(argv: list[str] | None = None) -> int:
 
     config = EvaluationConfig(args.episodes, args.max_steps, args.seed)
     experiment = None
+    feature_transform = get_feature_transform("absolute")
     if args.baseline == "expert":
         policy, name = heuristic_policy, "hand-coded expert"
     elif args.baseline == "untrained":
         policy, name = untrained_policy, "untrained (no action)"
     else:
-        model, experiment = _resolve_model(args.model)
-        policy, name = torch_policy(model), Path(args.model).stem
+        model, experiment, feature_transform = _resolve_model(args.model)
+        policy, name = torch_policy(model, feature_transform), Path(args.model).stem
 
     headless = args.headless or args.baseline is not None
     if not headless:
         if args.output:
             build_parser().error("saving evaluation JSON requires --headless")
-        _watch_model(model, config, name)
+        _watch_model(model, config, name, feature_transform)
         return 0
 
     result = evaluate_policy(

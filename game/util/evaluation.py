@@ -19,6 +19,7 @@ import torch
 
 from util.domain import Action, EpisodeOutcome, EvaluationConfig, GameState
 from util.screen import HUD_HEIGHT
+from util.features import FeatureTransform, get_feature_transform
 
 
 Policy = Callable[[GameState], Action]
@@ -207,13 +208,17 @@ def untrained_policy(state: GameState) -> Action:
     return Action(0.0, 0.0)
 
 
-def torch_policy(model: torch.nn.Module) -> Policy:
+def torch_policy(
+    model: torch.nn.Module,
+    feature_transform: FeatureTransform | None = None,
+) -> Policy:
     """Adapt a regression model to the small policy protocol."""
     model.eval()
+    transform = feature_transform or get_feature_transform("absolute")
 
     def predict(state: GameState) -> Action:
         with torch.no_grad():
-            features = torch.tensor([state.features()], dtype=torch.float32)
+            features = torch.tensor([transform.apply(state)], dtype=torch.float32)
             prediction = torch.round(model(features).cpu())[0]
         return Action(float(prediction[0]), float(prediction[1]))
 

@@ -22,10 +22,10 @@ from torch.utils.data import DataLoader, TensorDataset
 from util.data import Demonstration
 from util.downsampling import DownsampleContext, LoadedDownsampler
 from util.domain import TrainingConfig
+from util.features import FeatureTransform, get_feature_transform
 from util.model import ContinuousPolicyNetwork
 
 
-FEATURE_NAMES = ("blue_x", "blue_y", "target_x", "target_y")
 ACTION_NAMES = ("action_x", "action_y")
 MODEL_VERSION = 1
 TRAINING_PRESETS = {
@@ -59,6 +59,7 @@ class TrainingResult:
 class LoadedArtifact:
     model: ContinuousPolicyNetwork
     metadata: dict[str, object]
+    feature_transform: FeatureTransform
 
 
 def training_preset(name: str) -> TrainingConfig:
@@ -88,8 +89,12 @@ def split_episode_ids(
     return training, validation
 
 
-def fit_normalization(rows: Sequence[Demonstration]) -> Normalization:
-    features = torch.tensor([row.state.features() for row in rows], dtype=torch.float64)
+def fit_normalization(
+    rows: Sequence[Demonstration],
+    feature_transform: FeatureTransform | None = None,
+) -> Normalization:
+    transform = feature_transform or get_feature_transform("absolute")
+    features = torch.tensor([transform.apply(row.state) for row in rows], dtype=torch.float64)
     if not len(features):
         raise ValueError("Cannot fit normalization on an empty training partition")
     mean = features.mean(dim=0)
@@ -122,6 +127,7 @@ def train_policy(
     )
     train_rows = [row for row in rows if row.episode_id in train_ids]
     validation_rows = [row for row in rows if row.episode_id in validation_ids]
+    feature_transform = get_feature_transform(config.feature_transform)
     downsampling = None
     if downsampler is not None:
         before = len(train_rows)
@@ -141,12 +147,15 @@ def train_policy(
             "validation_rows": len(validation_rows),
             "removed_training_episode_ids": sorted(episodes_before - episodes_after),
         }
-    normalization = fit_normalization(train_rows)
+    normalization = fit_normalization(train_rows, feature_transform)
     mean = torch.tensor(normalization.mean, dtype=torch.float32)
     std = torch.tensor(normalization.std, dtype=torch.float32)
 
     def tensors(partition: Sequence[Demonstration]) -> tuple[torch.Tensor, torch.Tensor]:
-        x = torch.tensor([row.state.features() for row in partition], dtype=torch.float32)
+        x = torch.tensor(
+            [feature_transform.apply(row.state) for row in partition],
+            dtype=torch.float32,
+        )
         y = torch.tensor([row.action.values() for row in partition], dtype=torch.float32)
         return (x - mean) / std, y
 
@@ -157,6 +166,7 @@ def train_policy(
     # Seed before constructing either the model or DataLoader generator.
     torch.manual_seed(config.seed)
     model = ContinuousPolicyNetwork(
+        input_size=len(feature_transform.feature_names),
         hidden_size=config.hidden_size,
         hidden_layers=config.hidden_layers,
         device=target_device,
@@ -259,12 +269,15 @@ def save_artifact(result: TrainingResult, output_directory: str | Path) -> tuple
         "model_version": MODEL_VERSION,
         "model": {
             "type": "continuous_regression_mse",
-            "input_size": len(FEATURE_NAMES),
+            "input_size": len(get_feature_transform(result.config.feature_transform).feature_names),
             "output_size": len(ACTION_NAMES),
             "hidden_size": result.config.hidden_size,
             "hidden_layers": result.config.hidden_layers,
         },
-        "features": list(FEATURE_NAMES),
+        "feature_transform": result.config.feature_transform,
+        "features": list(
+            get_feature_transform(result.config.feature_transform).feature_names
+        ),
         "actions": list(ACTION_NAMES),
         "normalization": {
             "mean": list(result.normalization.mean),
@@ -313,4 +326,9 @@ def load_artifact(metadata_path: str | Path) -> LoadedArtifact:
     except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise ValueError(f"Could not load training artifact {path}: {error}") from error
     model.eval()
-    return LoadedArtifact(model=model, metadata=metadata)
+    feature_transform = get_feature_transform(metadata.get("feature_transform", "absolute"))
+    return LoadedArtifact(
+        model=model,
+        metadata=metadata,
+        feature_transform=feature_transform,
+    )

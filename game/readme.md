@@ -46,6 +46,16 @@ python train.py data/demonstrations_YYYYMMDD_HHMMSS.csv --downsample drop-noop
 
 Run `python train.py --list-downsamplers` to discover installed workspace plugins. The experiment metadata records the plugin name, source hash, before/after row counts, and any episode left empty by filtering. See [Downsampling plugins](../docs/downsampling-plugins.md) for the extension contract.
 
+Choose how game state is represented with `--features`:
+
+```bash
+python train.py DATA.csv --features absolute
+python train.py DATA.csv --features relative-center
+python train.py DATA.csv --features relative-containment
+```
+
+The raw CSV remains unchanged. Relative models must be executed using the generated `.json` experiment file because it records which two-feature transform the weights expect. See [Feature transforms](../docs/feature-transforms.md).
+
 Watch the trained model using the printed weights path without `.pth`:
 
 ```bash

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from util.data import DatasetError, load_demonstrations
 from util.downsampling import available_downsamplers, load_downsampler
+from util.features import FEATURE_TRANSFORMS
 from util.training import TRAINING_PRESETS, save_artifact, train_policy, training_preset
 
 
@@ -36,6 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden-layers", type=int, choices=(2, 4))
     parser.add_argument("--validation-fraction", type=float)
     parser.add_argument("--seed", type=int)
+    parser.add_argument(
+        "--features",
+        dest="feature_transform",
+        choices=tuple(FEATURE_TRANSFORMS),
+        help="state representation used by the model",
+    )
     parser.add_argument("--output-dir", type=Path, help="artifact directory (default: dataset folder)")
     parser.add_argument(
         "--downsample",
@@ -65,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         for name in (
             "epochs", "learning_rate", "batch_size", "hidden_size",
             "hidden_layers", "validation_fraction", "seed",
+            "feature_transform",
         )
         if getattr(args, name) is not None
     }

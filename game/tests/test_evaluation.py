@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import execute
+import torch
 
 from util.domain import Action, EpisodeOutcome, EvaluationConfig
 from util.evaluation import (
@@ -15,15 +16,30 @@ from util.evaluation import (
     seeded_scenarios,
     untrained_policy,
 )
+from util.features import get_feature_transform
+from util.model import ContinuousPolicyNetwork
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_transformed_weights_require_paired_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "relative.pth"
+            model = ContinuousPolicyNetwork(input_size=2, hidden_size=8, hidden_layers=2)
+            torch.save(model.state_dict(), checkpoint)
+
+            with self.assertRaisesRegex(ValueError, "paired .json"):
+                execute._legacy_model(checkpoint)
+
     def test_execute_uses_visible_game_by_default(self):
         model = Mock()
         game = Mock()
         game.start.return_value = []
         with (
-            patch.object(execute, "_resolve_model", return_value=(model, None)),
+            patch.object(
+                execute,
+                "_resolve_model",
+                return_value=(model, None, get_feature_transform("absolute")),
+            ),
             patch.object(execute.FromModel, "from_model", return_value=Mock()),
             patch.object(execute, "Game", return_value=game) as game_type,
         ):

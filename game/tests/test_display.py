@@ -4,9 +4,17 @@ from unittest.mock import Mock, call, patch
 from util.colour import Colour
 from util.display import Display
 from util.rectangle import Rectangle
+from util.screen import Screen
 
 
 class DisplayTests(unittest.TestCase):
+    def test_player_cannot_enter_reserved_hud_area(self):
+        display = Display.__new__(Display)
+        display.screen = Screen(width=100, height=100, hud_height=40)
+        display.car = Rectangle(25, 39, 10, 10, Colour.BLOCK)
+
+        self.assertTrue(display.is_car_out_of_bounds())
+
     def test_player_is_drawn_as_blue_circle_inside_its_bounding_box(self):
         display = Display.__new__(Display)
         display.gameDisplay = Mock()

@@ -35,7 +35,9 @@ class EvaluationTests(unittest.TestCase):
 
     def test_seed_reproduces_scenarios_and_different_seed_changes_them(self):
         config = EvaluationConfig(episodes=5, max_steps=100, seed=12)
-        self.assertEqual(seeded_scenarios(config), seeded_scenarios(config))
+        scenarios = seeded_scenarios(config)
+        self.assertEqual(scenarios, seeded_scenarios(config))
+        self.assertTrue(all(scenario.target_y >= 40 for scenario in scenarios))
         self.assertNotEqual(
             seeded_scenarios(config),
             seeded_scenarios(EvaluationConfig(5, 100, 13)),

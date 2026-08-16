@@ -87,7 +87,10 @@ class Game:
         self.input.goto(car_x, car_y)
 
         target_x = self._random.randint(0, self.display.screen.width - self.display.parking.w)
-        target_y = self._random.randint(0, self.display.screen.height - self.display.parking.h)
+        target_y = self._random.randint(
+            self.display.screen.play_area_top,
+            self.display.screen.height - self.display.parking.h,
+        )
         self.display.parking.teleport(Coordinate(target_x, target_y))
         self.input.move_target(target_x, target_y)
 

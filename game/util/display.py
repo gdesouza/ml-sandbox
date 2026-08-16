@@ -59,4 +59,5 @@ class Display:
 
     def is_car_out_of_bounds(self) -> bool:
         return (self.car.pos.x > self.screen.width - self.car.w or self.car.pos.x < 0) or \
-                (self.car.pos.y > self.screen.height - self.car.h or self.car.pos.y < 0)
+                (self.car.pos.y > self.screen.height - self.car.h or \
+                 self.car.pos.y < self.screen.play_area_top)

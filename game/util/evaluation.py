@@ -18,6 +18,7 @@ from typing import Callable, Sequence
 import torch
 
 from util.domain import Action, EpisodeOutcome, EvaluationConfig, GameState
+from util.screen import HUD_HEIGHT
 
 
 Policy = Callable[[GameState], Action]
@@ -68,6 +69,7 @@ def seeded_scenarios(
     screen_size: tuple[int, int] = (800, 600),
     blue_size: int = 50,
     target_size: int = 70,
+    play_area_top: int = HUD_HEIGHT,
 ) -> tuple[Scenario, ...]:
     """Create the exact scenarios used by the interactive game."""
     config.validate()
@@ -84,7 +86,7 @@ def seeded_scenarios(
             blue_x,
             blue_y,
             generator.randint(0, width - target_size),
-            generator.randint(0, height - target_size),
+            generator.randint(play_area_top, height - target_size),
         )
         for _ in range(config.episodes)
     )
@@ -109,6 +111,7 @@ def evaluate_policy(
     screen_size: tuple[int, int] = (800, 600),
     blue_size: int = 50,
     target_size: int = 70,
+    play_area_top: int = HUD_HEIGHT,
 ) -> EvaluationResult:
     """Evaluate ``policy`` on a finite scenario set without opening a window."""
     config.validate()
@@ -117,6 +120,7 @@ def evaluate_policy(
         screen_size=screen_size,
         blue_size=blue_size,
         target_size=target_size,
+        play_area_top=play_area_top,
     )
     if len(chosen) != config.episodes:
         raise ValueError(
@@ -148,7 +152,7 @@ def evaluate_policy(
                 if (
                     state.blue_x < 0
                     or state.blue_x > width - blue_size
-                    or state.blue_y < 0
+                    or state.blue_y < play_area_top
                     or state.blue_y > height - blue_size
                 ):
                     outcome = EpisodeOutcome.OUT_OF_BOUNDS

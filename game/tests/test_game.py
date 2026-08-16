@@ -129,6 +129,7 @@ class GameLifecycleTests(unittest.TestCase):
         second._reset_episode()
 
         self.assertEqual(first_input.targets, second_input.targets)
+        self.assertGreaterEqual(first_input.targets[0][1], first.display.screen.play_area_top)
 
     @patch("util.game.pygame.display.update")
     def test_completed_episode_records_versioned_pre_action_states(self, update):

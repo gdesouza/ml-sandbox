@@ -1,8 +1,9 @@
-"""Compatibility command for finite, headless model evaluation."""
+"""Watch a model play, with optional finite headless evaluation."""
 
 from __future__ import annotations
 
 import argparse
+import io
 import json
 from pathlib import Path
 
@@ -18,6 +19,9 @@ from util.evaluation import (
     untrained_policy,
 )
 from util.model import ContinuousPolicyNetwork
+from util.coordinate import Coordinate
+from util.game import Game
+from util.inputs import FromModel
 from util.training import load_artifact
 
 
@@ -48,18 +52,49 @@ def _resolve_model(argument: str) -> tuple[ContinuousPolicyNetwork, str | None]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Evaluate a behavior-cloning model on finite, seeded episodes."
+        description=(
+            "Watch a behavior-cloning model play in the game window. "
+            "Use --headless for reproducible metrics without a display."
+        )
     )
     parser.add_argument("model", nargs="?", help="experiment .json or legacy .pth path")
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--max-steps", type=int, default=500)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--baseline", choices=("expert", "untrained"))
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="run reproducible evaluation without opening the game window",
+    )
     parser.add_argument("--output", type=Path, help="evaluation JSON destination")
     parser.add_argument(
         "--compare", nargs="+", type=Path, metavar="JSON", help="compare saved results"
     )
     return parser
+
+
+def _watch_model(model: ContinuousPolicyNetwork, config: EvaluationConfig, name: str) -> None:
+    controller = FromModel.from_model(
+        model,
+        Coordinate(375, 275),
+        Coordinate(0, 0),
+    )
+    game = Game(
+        input=controller,
+        output=io.StringIO(),
+        seed=config.seed,
+        max_steps=config.max_steps,
+    )
+    try:
+        results = game.start(max_episodes=config.episodes)
+    finally:
+        game.quit()
+
+    completed = [result for result in results if result.outcome.value != "quit"]
+    successes = sum(result.outcome.value == "success" for result in completed)
+    print(f"Policy: {name}")
+    print(f"Visible attempts: {successes}/{len(completed)} succeeded")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
     else:
         model, experiment = _resolve_model(args.model)
         policy, name = torch_policy(model), Path(args.model).stem
+
+    headless = args.headless or args.baseline is not None
+    if not headless:
+        if args.output:
+            build_parser().error("saving evaluation JSON requires --headless")
+        _watch_model(model, config, name)
+        return 0
 
     result = evaluate_policy(
         policy, config, policy_name=name, experiment=experiment

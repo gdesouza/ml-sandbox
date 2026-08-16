@@ -2,6 +2,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+import execute
 
 from util.domain import Action, EpisodeOutcome, EvaluationConfig
 from util.evaluation import (
@@ -15,6 +18,21 @@ from util.evaluation import (
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_execute_uses_visible_game_by_default(self):
+        model = Mock()
+        game = Mock()
+        game.start.return_value = []
+        with (
+            patch.object(execute, "_resolve_model", return_value=(model, None)),
+            patch.object(execute.FromModel, "from_model", return_value=Mock()),
+            patch.object(execute, "Game", return_value=game) as game_type,
+        ):
+            self.assertEqual(execute.main(["model.pth", "--episodes", "2"]), 0)
+
+        game_type.assert_called_once()
+        game.start.assert_called_once_with(max_episodes=2)
+        game.quit.assert_called_once()
+
     def test_seed_reproduces_scenarios_and_different_seed_changes_them(self):
         config = EvaluationConfig(episodes=5, max_steps=100, seed=12)
         self.assertEqual(seeded_scenarios(config), seeded_scenarios(config))

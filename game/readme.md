@@ -36,7 +36,7 @@ Watch the trained model using the printed weights path without `.pth`:
 python execute.py data/model_RUN_ID
 ```
 
-The current evaluation is interactive. Observe a fixed number of attempts when comparing models so the comparison is fair.
+The game window opens by default and runs 20 attempts. Change the count with `--episodes`. For reproducible metrics without a window, add `--headless`; use `--output evaluation.json` to save those results.
 
 ## What the data means
 

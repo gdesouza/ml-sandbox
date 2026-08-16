@@ -24,6 +24,7 @@ class Game:
         framerate: int = 60,
         staleness_factor: int = 100,
         recorder: EpisodeRecorder | None = None,
+        max_steps: int | None = None,
     ) -> None:
         pygame.init()
         self.input = input if input is not None else FromKeyboard()
@@ -33,6 +34,7 @@ class Game:
         self.staleness_factor = staleness_factor
         self.output = output
         self.recorder = recorder
+        self.max_steps = max_steps
         self.num_success = 0
         self._game_exit = False
         self._random = random.Random(seed)
@@ -123,6 +125,9 @@ class Game:
                 self.fail()
                 outcome = EpisodeOutcome.OUT_OF_BOUNDS
             elif stalled > self.staleness_factor:
+                self.fail()
+                outcome = EpisodeOutcome.STALLED
+            elif self.max_steps is not None and steps >= self.max_steps:
                 self.fail()
                 outcome = EpisodeOutcome.STALLED
 

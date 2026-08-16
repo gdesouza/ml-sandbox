@@ -48,10 +48,10 @@ Training reserves whole episodes for validation and saves both model weights (`.
 
 ## 5. Evaluate the policy
 
-Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many seeded episodes to run. The equivalent direct command is:
+Choose **Evaluate a model** and enter the `.json` experiment path printed by training. Choose how many attempts to watch. The game window shows the learned policy moving the blue box:
 
 ```bash
 python -m behavior_cloning_game evaluate game/data/model_RUN_ID.json -- --episodes 20
 ```
 
-Compare its success count, success rate, successful-step average, and failure reasons. A low validation loss does not guarantee successful play: the model may encounter states missing from your demonstrations.
+For reproducible metrics without opening the window, add `--headless`. Compare the success count, success rate, successful-step average, and failure reasons. A low validation loss does not guarantee successful play: the model may encounter states missing from your demonstrations.

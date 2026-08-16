@@ -92,7 +92,23 @@ class FromModel:
             hidden_layers=hidden_layers,
         )
         self.model.load_state_dict(state_dict)
-        self.initial_state = torch.tensor([init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y], dtype=torch.float32, device=device)
+        self._initialize_state(init_pos_blue, init_pos_red, device)
+
+    @classmethod
+    def from_model(cls, model, init_pos_blue, init_pos_red):
+        instance = cls.__new__(cls)
+        instance.model = model
+        device = next(model.parameters()).device
+        instance._initialize_state(init_pos_blue, init_pos_red, device)
+        return instance
+
+    def _initialize_state(self, init_pos_blue, init_pos_red, device) -> None:
+        self.device = device
+        self.initial_state = torch.tensor(
+            [init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y],
+            dtype=torch.float32,
+            device=device,
+        )
         self.reset_move()
 
     def reset_move(self) -> None:
@@ -101,14 +117,22 @@ class FromModel:
     def goto(self, x, y) -> None:
         init_pos_red_x = self.initial_state[2]
         init_pos_red_y = self.initial_state[3]
-        self.initial_state = torch.tensor([x, y, init_pos_red_x, init_pos_red_y], dtype=torch.float32, device=accel_device())
+        self.initial_state = torch.tensor(
+            [x, y, init_pos_red_x, init_pos_red_y],
+            dtype=torch.float32,
+            device=self.device,
+        )
         self.reset_move()
 
 
     def move_target(self, x, y) -> None:
         init_pos_blue_x = self.initial_state[0]
         init_pos_blue_y = self.initial_state[1]
-        self.initial_state = torch.tensor([init_pos_blue_x, init_pos_blue_y, x, y], dtype=torch.float32, device=accel_device())
+        self.initial_state = torch.tensor(
+            [init_pos_blue_x, init_pos_blue_y, x, y],
+            dtype=torch.float32,
+            device=self.device,
+        )
         self.reset_move()
 
     def get_move(self) -> object:

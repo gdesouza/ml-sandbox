@@ -48,6 +48,14 @@ class Display:
         self.gameDisplay.blit(TextSurf, TextRect)
 
     def draw_hud(self, text: str) -> None:
+        hud_rectangle = [0, 0, self.screen.width, self.screen.play_area_top]
+        pygame.draw.rect(self.gameDisplay, Colour.WHITE, hud_rectangle)
+        pygame.draw.rect(
+            self.gameDisplay,
+            Colour.BLACK,
+            hud_rectangle,
+            width=2,
+        )
         font = pygame.font.Font(None, 24)
         surface, rectangle = self.text_objects(text, font)
         rectangle.topleft = (10, 10)

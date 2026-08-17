@@ -48,3 +48,15 @@ def test_menu_collects_evaluation_episode_count(monkeypatch):
     with patch("behavior_cloning_game.cli.run_workflow", return_value=0) as run:
         assert cli.interactive_menu() == 0
     run.assert_called_once_with("evaluate", ["model.json", "--episodes", "12"])
+
+
+def test_text_flag_opens_terminal_menu():
+    with patch("behavior_cloning_game.cli.interactive_menu", return_value=0) as menu:
+        assert cli.main(["--text"]) == 0
+    menu.assert_called_once_with()
+
+
+def test_no_command_opens_graphical_launcher():
+    with patch("behavior_cloning_game.ui.launch", return_value=0) as launch:
+        assert cli.main([]) == 0
+    launch.assert_called_once_with(cli.run_workflow, cli.project_directory() / "data")

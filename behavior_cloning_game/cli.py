@@ -105,6 +105,11 @@ def build_parser() -> argparse.ArgumentParser:
             "behavior-cloning-game evaluate data/model.pth --episodes 20"
         ),
     )
+    parser.add_argument(
+        "--text",
+        action="store_true",
+        help="use the terminal menu instead of the graphical launcher",
+    )
     subparsers = parser.add_subparsers(dest="command")
     descriptions = {
         "collect": "Play with the arrow keys and save demonstrations.",
@@ -130,7 +135,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command is None:
-        return interactive_menu()
+        if args.text:
+            return interactive_menu()
+        from .ui import launch
+
+        return launch(run_workflow, project_directory() / "data")
     forwarded = list(args.arguments)
     if "--" in forwarded:
         forwarded.remove("--")

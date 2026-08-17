@@ -16,13 +16,18 @@ python -m pip install -e .
 python -m behavior_cloning_game
 ```
 
-The final command opens a guided terminal menu for the full learning loop:
+The final command opens a graphical launcher for the full learning loop:
 
 ```text
 Collect demonstrations -> Inspect the data -> Train a policy -> Evaluate it
 ```
 
+Dataset inspection is displayed in the launcher with sample and episode counts,
+outcomes, action balance, no-op ratio, and data-quality guidance.
+
 Start with the [five-minute quick start](docs/quickstart.md) for a guided first run.
+Use `python -m behavior_cloning_game --text` when you prefer the terminal menu or
+are working without a graphical display.
 
 ## Command-line workflow
 

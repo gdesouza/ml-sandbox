@@ -28,7 +28,9 @@ python -m pip install -e .
 python -m behavior_cloning_game
 ```
 
-Choose **Collect demonstrations**. Use the arrow keys to move the blue circle fully inside the outlined white square. Complete several episodes and close the window when finished. The terminal prints the saved CSV path.
+The graphical launcher opens. Choose **Collect** and use the arrow keys to move the blue circle fully inside the outlined white square. Complete several episodes and close the game window when finished. The launcher returns when collection is complete.
+
+If a graphical launcher is unavailable, use `python -m behavior_cloning_game --text` for the terminal menu.
 
 ## 3. Inspect what the model will learn from
 

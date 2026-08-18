@@ -24,6 +24,8 @@ Collect demonstrations -> Inspect the data -> Train a policy -> Evaluate it
 
 Dataset inspection is displayed in the launcher with sample and episode counts,
 outcomes, action balance, no-op ratio, and data-quality guidance.
+Before training, the launcher lets you choose preprocessing, feature representation,
+presets, and individual hyperparameters.
 
 Start with the [five-minute quick start](docs/quickstart.md) for a guided first run.
 Use `python -m behavior_cloning_game --text` when you prefer the terminal menu or

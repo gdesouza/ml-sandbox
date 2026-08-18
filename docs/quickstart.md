@@ -28,7 +28,10 @@ python -m pip install -e .
 python -m behavior_cloning_game
 ```
 
-The graphical launcher opens. Choose **Collect** and use the arrow keys to move the blue circle fully inside the outlined white square. Complete several episodes and close the game window when finished. The launcher returns when collection is complete.
+The graphical launcher opens. Choose **Collect**, then create a new dataset or append
+to an existing compatible dataset. Use the arrow keys to move the blue circle fully
+inside the outlined white square. Complete several episodes and press Escape when
+finished. The launcher returns when collection is complete.
 
 If a graphical launcher is unavailable, use `python -m behavior_cloning_game --text` for the terminal menu.
 
@@ -42,7 +45,8 @@ python -m behavior_cloning_game inspect game/data/demonstrations_YYYYMMDD_HHMMSS
 
 Look for the four state features (`blue_x`, `blue_y`, `target_x`, `target_y`) and the two action labels (`action_x`, `action_y`). Check whether one movement direction dominates.
 
-To collect more examples in the same compatible dataset later, run:
+To collect more examples later, choose **Collect → Append to an existing dataset** in
+the launcher. The equivalent direct command is:
 
 ```bash
 python game/play.py --dataset game/data/demonstrations_YYYYMMDD_HHMMSS.csv
@@ -52,7 +56,11 @@ Episode numbering continues from the highest existing episode. The command valid
 
 ## 4. Train
 
-Choose **Train a model** and paste the dataset path. This uses the Balanced preset. For a faster direct run with explicit options, use `python -m behavior_cloning_game train game/data/FILE.csv -- --preset quick`.
+Choose **Train a model**, select the dataset, and review the training configuration.
+The Balanced preset is selected initially. You can change the feature representation,
+drop no-op actions from the training partition, or edit individual hyperparameters
+before starting. For a faster direct run with explicit options, use
+`python -m behavior_cloning_game train game/data/FILE.csv -- --preset quick`.
 
 Training reserves whole episodes for validation and saves both model weights (`.pth`) and experiment details (`.json`). Try `--preset balanced` when you have more demonstrations.
 

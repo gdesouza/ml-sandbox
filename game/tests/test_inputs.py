@@ -1,16 +1,37 @@
+import tempfile
 import unittest
 from pathlib import Path
-import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 
+import pygame
 import torch
-
+from util.acceleration import accel_device
 from util.coordinate import Coordinate
 from util.inputs import FromModel
-from util.acceleration import accel_device
 from util.model import ContinuousPolicyNetwork
 
 
 class FromModelTests(unittest.TestCase):
+    def test_escape_requests_immediate_finish_without_running_inference(self):
+        model = ContinuousPolicyNetwork(hidden_size=8, hidden_layers=2)
+        model_input = FromModel.from_model(
+            model,
+            Coordinate(360, 480),
+            Coordinate(0, 0),
+        )
+        event = SimpleNamespace(type=pygame.KEYDOWN, key=pygame.K_ESCAPE)
+
+        with (
+            patch("util.inputs.pygame.event.get", return_value=[event]),
+            patch.object(model, "forward", wraps=model.forward) as forward,
+        ):
+            move = model_input.get_move()
+
+        self.assertTrue(model_input.quit_requested)
+        self.assertEqual((move.x, move.y), (0, 0))
+        forward.assert_not_called()
+
     def test_loads_checkpoint_saved_on_another_accelerator(self):
         checkpoint = (
             Path(__file__).parents[1]

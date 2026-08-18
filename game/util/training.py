@@ -12,19 +12,18 @@ import json
 import platform
 import random
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
-
 from util.data import Demonstration
-from util.downsampling import DownsampleContext, LoadedDownsampler
 from util.domain import TrainingConfig
+from util.downsampling import DownsampleContext, LoadedDownsampler
 from util.features import FeatureTransform, get_feature_transform
 from util.model import ContinuousPolicyNetwork
-
 
 ACTION_NAMES = ("action_x", "action_y")
 MODEL_VERSION = 1
@@ -262,10 +261,12 @@ def save_artifact(result: TrainingResult, output_directory: str | Path) -> tuple
     metadata_path = destination / f"model_{run_id}.json"
     if weights_path.exists() or metadata_path.exists():
         raise FileExistsError(
-            f"Experiment {run_id} already exists in {destination}; change a setting or output folder."
+            f"Experiment {run_id} already exists in {destination}; "
+            "change a setting or output folder."
         )
     metadata = {
         "artifact_version": 1,
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "model_version": MODEL_VERSION,
         "model": {
             "type": "continuous_regression_mse",

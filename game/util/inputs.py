@@ -129,6 +129,7 @@ class FromModel:
     ) -> None:
         self.device = device
         self.feature_transform = feature_transform
+        self.quit_requested = False
         self.initial_state = torch.tensor(
             [init_pos_blue.x, init_pos_blue.y, init_pos_red.x, init_pos_red.y],
             dtype=torch.float32,
@@ -161,6 +162,13 @@ class FromModel:
         self.reset_move()
 
     def get_move(self) -> object:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (
+                event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+            ):
+                self.quit_requested = True
+                return Coordinate(0, 0)
+
         self.model.eval()
         with torch.no_grad():
             game_state = GameState(*(float(value) for value in self.state))

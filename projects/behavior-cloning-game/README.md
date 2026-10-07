@@ -150,6 +150,15 @@ invocation already in progress may finish; queued runs wait for resume. CloudFro
 Cognito, API bootstrap, SQS, and S3 remain provisioned, so pause prevents training
 compute but does not eliminate all AWS charges.
 
+To remove the deployed CDK stack, run `make teardown` from this project directory
+and confirm the CDK prompt. This removes the stack's CloudFront distribution,
+Lambda functions, API Gateway, queues, and other managed resources. The stack
+retains its private artifacts S3 bucket (including datasets and trained models)
+and Cognito user pool by design; deleting the stack does not delete those resources.
+If you also want to remove them, first back up anything you need, then empty and
+delete the bucket and delete the user pool from the AWS console. A custom ACM
+certificate and DNS records are external to this stack and are not removed.
+
 ## Development
 
 Install the development tools and run the tests from this directory:

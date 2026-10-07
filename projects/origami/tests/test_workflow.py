@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from app.config import Settings
+from app.config import Settings, load_experiment
 from app.main import create_app
 
 
@@ -52,10 +52,14 @@ def complete_run(client):
     steps = client.get('/api/experiment').json()['steps']
     assert upload(client, run['id'], 0).status_code == 200
     for index in range(len(steps)):
-        response = client.post(f"/api/runs/{run['id']}/confirm/{index}")
-        assert response.status_code == 200, response.text
         if index + 1 < len(steps):
+            response = client.post(f"/api/runs/{run['id']}/confirm/{index}")
+            assert response.status_code == 200, response.text
             assert upload(client, run['id'], index + 1).json()['action_id'] == steps[index + 1]['action_id']
+            response = client.post(f"/api/runs/{run['id']}/advance/{index}")
+            assert response.status_code == 200, response.text
+        else:
+            assert upload(client, run['id'], index + 1).json()['final_state'] is True
             response = client.post(f"/api/runs/{run['id']}/advance/{index}")
             assert response.status_code == 200, response.text
     assert response.json()['status'] == 'COMPLETE'
@@ -79,7 +83,7 @@ def test_order_ownership_retry_and_restart(system):
     assert client.post(f"/api/runs/{run['id']}/confirm/0").json()['stage'] == 'NEXT_PHOTO'
     assert client.post(f"/api/runs/{run['id']}/confirm/0").json()['stage'] == 'NEXT_PHOTO'
     assert client.post(f"/api/runs/{run['id']}/advance/0").status_code == 409
-    assert upload(client, run['id'], 1).json()['action_id'] == 'fold_left_corner'
+    assert upload(client, run['id'], 1).json()['action_id'] == 'fold_top_corners'
     state = client.get('/api/runs/'+run['id']).json()
     assert state['stage'] == 'NEXT_PHOTO'
     assert state['next_sample']['status'] == 'READY'
@@ -102,12 +106,14 @@ def test_final_fold_confirmation_retry(system):
     join(client)
     run = complete_run(client)
     completed = client.get('/api/runs/'+run['id']).json()
-    retry = client.post(f"/api/runs/{run['id']}/confirm/7")
+    retry = client.post(f"/api/runs/{run['id']}/confirm/6")
     assert retry.status_code == 200
     assert retry.json()['completed_at'] == completed['completed_at']
     assert len(app.state.repo.list('sample#')) == 8
-    assert completed['next_sample'] is None
-    assert client.post(f"/api/runs/{run['id']}/advance/7").status_code == 409
+    assert completed['next_sample']['final_state'] is True
+    retry = client.post(f"/api/runs/{run['id']}/advance/6")
+    assert retry.status_code == 200
+    assert retry.json()['completed_at'] == completed['completed_at']
 
 
 def test_training_holdout_fallback_failure_cleanup(system):
@@ -124,13 +130,13 @@ def test_training_holdout_fallback_failure_cleanup(system):
     model = status['model']
     assert model['training_participants'] == [alice]
     assert model['test_participants'] == [bob]
-    assert model['training_samples'] == 8
-    assert len(model['confusion_matrix']) == 8
+    assert model['training_samples'] == 7
+    assert len(model['confusion_matrix']) == 7
     version = model['id']
     assert client.post(f'/api/models/{version}/fallback').status_code == 200
     assert client.post(f'/api/models/{version}/activate').status_code == 200
     prediction = client.post('/api/predict', content=photo()).json()
-    assert len(prediction['probabilities']) == 8
+    assert len(prediction['probabilities']) == 7
     assert sum(item['probability'] for item in prediction['probabilities']) == pytest.approx(1)
     assert prediction['source'] == 'fallback'
     participant_client = TestClient(app, headers={'X-Origami-Request':'1'})
@@ -151,12 +157,13 @@ def test_training_holdout_fallback_failure_cleanup(system):
     admin(restarted)
     assert restarted.post('/api/predict', content=photo()).json()['model_version'] == version
     assert client.post('/api/admin/cleanup', json={'experiment_id':'wrong'}).status_code == 400
-    assert client.post('/api/admin/cleanup', json={'experiment_id':'airplane_01'}).status_code == 200
+    experiment_id = load_experiment(settings.config_path)['id']
+    assert client.post('/api/admin/cleanup', json={'experiment_id':experiment_id}).status_code == 200
     stats = client.get('/api/dataset/stats').json()
     assert stats['samples'] == 0 and stats['participants'] == []
     assert stats['active']['id'] == version
     assert client.post('/api/runs').status_code == 409
-    assert not list((settings.data_dir/'objects/experiments/airplane_01/samples').glob('*.jpg'))
+    assert not list((settings.data_dir/'objects'/f'experiments/{experiment_id}/samples').glob('*.jpg'))
 
 
 def test_boundaries_and_exclusion(system):

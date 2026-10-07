@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 
+import yaml
+
 out = Path('.deploy')
 out.mkdir(exist_ok=True)
 region = os.environ['AWS_REGION']
@@ -11,6 +13,8 @@ name = os.environ.get('APP_NAME', 'origami-bc')
 bucket = os.environ['S3_BUCKET']
 table = os.environ['DYNAMODB_TABLE']
 image = os.environ['IMAGE_URI']
+experiment_id = yaml.safe_load(Path('config/experiment.yaml').read_text())['experiment']['id']
+experiment_prefix = f'experiments/{experiment_id}/*'
 role = lambda suffix: f'arn:aws:iam::{account}:role/{name}-{suffix}'
 
 
@@ -36,12 +40,12 @@ save('infra-extra-policy.json', {'Version':'2012-10-17','Statement':[
 ]})
 save('app-policy.json', {'Version':'2012-10-17','Statement':[
     {'Effect':'Allow','Action':['s3:ListBucket'],'Resource':f'arn:aws:s3:::{bucket}',
-     'Condition':{'StringLike':{'s3:prefix':['experiments/airplane_01/*']}}},
+     'Condition':{'StringLike':{'s3:prefix':[experiment_prefix]}}},
     {'Effect':'Allow','Action':['s3:GetObject','s3:PutObject','s3:DeleteObject'],
-     'Resource':f'arn:aws:s3:::{bucket}/experiments/airplane_01/*'},
+     'Resource':f'arn:aws:s3:::{bucket}/{experiment_prefix}'},
     {'Effect':'Allow','Action':['dynamodb:GetItem','dynamodb:PutItem','dynamodb:DeleteItem','dynamodb:Query'],
      'Resource':f'arn:aws:dynamodb:{region}:{account}:table/{table}',
-     'Condition':{'ForAllValues:StringEquals':{'dynamodb:LeadingKeys':['airplane_01']}, 'Null':{'dynamodb:LeadingKeys':'false'}}}
+     'Condition':{'ForAllValues:StringEquals':{'dynamodb:LeadingKeys':[experiment_id]}, 'Null':{'dynamodb:LeadingKeys':'false'}}}
 ]})
 secrets = {key: os.environ.get(key+'_ARN','') for key in ('SESSION_SECRET','EVENT_CODE','ADMIN_PASSWORD')}
 if all(secrets.values()):

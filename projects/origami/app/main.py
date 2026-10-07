@@ -39,8 +39,9 @@ class Login(BaseModel):
 
 class SampleInput(BaseModel):
     run_id: str = Field(max_length=40)
-    step_index: int = Field(ge=0, le=19)
+    step_index: int = Field(ge=0, le=20)
     content_type: str
+    replace: bool = False
 
 
 class TrainInput(BaseModel):
@@ -206,29 +207,44 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
         run = owned_run(request, run_id)
         index = run["step_index"]
         return {**run, "stage": run_stage(run), "sample": repo.get(f"sample#{run_id}-{index}"),
-                "next_sample": repo.get(f"sample#{run_id}-{index + 1}") if index + 1 < len(experiment["steps"]) else None}
+                "next_sample": repo.get(f"sample#{run_id}-{index + 1}") if index + 1 <= len(experiment["steps"]) else None}
 
     @app.post("/api/samples")
     def sample_create(data: SampleInput, request: Request):
         with locked(repo, "dataset"):
             collecting()
             run = owned_run(request, data.run_id)
-            if run["status"] != "ACTIVE" or data.step_index < 0 or data.step_index >= len(experiment["steps"]):
+            if run["status"] != "ACTIVE" or data.step_index < 0 or data.step_index > len(experiment["steps"]):
                 raise HTTPException(409, "There is no paper state to upload at this step")
-            identifier = f"{run['id']}-{data.step_index}"
-            sample = repo.get("sample#" + identifier)
-            if sample and sample["status"] == "READY":
-                return {"sample": sample, "upload": None}
-            stage = run_stage(run)
-            current_photo = data.step_index == run["step_index"] and stage == "CURRENT_PHOTO"
-            next_photo = data.step_index == run["step_index"] + 1 and stage == "NEXT_PHOTO"
-            if not (current_photo or next_photo):
-                raise HTTPException(409, "Upload must match the current step")
             if data.content_type not in {"image/jpeg", "image/png"}:
                 raise ValueError("Choose JPEG or PNG; convert HEIC before uploading")
+            identifier = f"{run['id']}-{data.step_index}"
+            sample = repo.get("sample#" + identifier)
+            replacement_pending = bool(sample and sample.get("replacement_pending"))
+            if sample and sample["status"] == "READY":
+                replace_current = (data.step_index == run["step_index"]
+                                   and run_stage(run) in {"ACTION", "NEXT_PHOTO"})
+                replace_next = (data.step_index == run["step_index"] + 1
+                                and run_stage(run) == "NEXT_PHOTO")
+                if not data.replace or not (replace_current or replace_next):
+                    return {"sample": sample, "upload": None}
+                sample["status"] = "PENDING_UPLOAD"
+                replacement_pending = True
+                repo.put("sample#" + identifier, sample)
+            stage = run_stage(run)
+            current_photo = data.step_index == run["step_index"] and stage == "CURRENT_PHOTO"
+            current_replace = data.step_index == run["step_index"] and stage in {"ACTION", "NEXT_PHOTO"}
+            next_photo = (data.step_index == run["step_index"] + 1 and stage in {"ACTION", "NEXT_PHOTO"}
+                          and (data.step_index < len(experiment["steps"])
+                               or run["step_index"] == len(experiment["steps"]) - 1))
+            if not (current_photo or current_replace or next_photo):
+                raise HTTPException(409, "Upload must match the current step")
             sample = {"id": identifier, "participant_id": run["participant_id"], "run_id": run["id"],
-                      "step_index": data.step_index, "action_id": experiment["steps"][data.step_index]["action_id"],
-                      "status": "PENDING_UPLOAD", "excluded": False, "created_at": now(),
+                      "step_index": data.step_index,
+                      "action_id": experiment["steps"][min(data.step_index, len(experiment["steps"]) - 1)]["action_id"],
+                      "status": "PENDING_UPLOAD", "excluded": data.step_index == len(experiment["steps"]),
+                      "final_state": data.step_index == len(experiment["steps"]), "created_at": now(),
+                      "replacement_pending": replacement_pending,
                       "fingerprint": experiment["fingerprint"], "content_type": data.content_type,
                       "raw_key": prefix + "uploads/" + identifier,
                       "image_key": prefix + "samples/" + identifier + ".jpg"}
@@ -260,17 +276,22 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
             try:
                 data = normalize_image(objects.get(sample["raw_key"], settings.max_upload))
             except Exception as error:
-                sample["status"] = "FAILED"
+                sample["status"] = "READY" if sample.get("replacement_pending") else "FAILED"
+                sample.pop("replacement_pending", None)
                 repo.put("sample#" + sample_id, sample)
                 log.warning(json.dumps({"event": "upload_failed", "sample": sample_id}))
                 raise ValueError("Upload missing or invalid; please retry with a JPEG/PNG under 10 MiB") from error
             objects.put(sample["image_key"], data, "image/jpeg")
             sample["status"] = "READY"
+            sample.pop("replacement_pending", None)
             repo.put("sample#" + sample_id, sample)
             objects.delete(sample["raw_key"])
             run = repo.get("run#" + sample["run_id"])
             if sample["step_index"] == run["step_index"] and run_stage(run) == "CURRENT_PHOTO":
                 run["stage"] = "ACTION"
+                repo.put("run#" + run["id"], run)
+            elif sample["step_index"] == run["step_index"] + 1 and run_stage(run) == "ACTION":
+                run["stage"] = "NEXT_PHOTO"
                 repo.put("run#" + run["id"], run)
             return sample
 
@@ -286,10 +307,7 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
                 raise HTTPException(409, "Upload the current paper state before performing this fold")
             if run_stage(run) not in {"ACTION", "NEXT_PHOTO"}:
                 raise HTTPException(409, "Complete the current run step first")
-            if step_index == len(experiment["steps"]) - 1:
-                run.update(status="COMPLETE", completed_at=now())
-            else:
-                run["stage"] = "NEXT_PHOTO"
+            run["stage"] = "NEXT_PHOTO"
             repo.put("run#" + run_id, run)
             return run
 
@@ -300,12 +318,32 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
             run = owned_run(request, run_id)
             if step_index < run["step_index"]:  # Safe retry after a lost response.
                 return run
+            if run["status"] == "COMPLETE" and step_index == run["step_index"]:
+                return run
             sample = repo.get(f"sample#{run_id}-{step_index + 1}")
             if (step_index != run["step_index"] or run_stage(run) != "NEXT_PHOTO"
                     or not sample or sample["status"] != "READY"):
                 raise HTTPException(409, "Upload the folded paper state before moving to the next fold")
-            run["step_index"] += 1
-            run["stage"] = "ACTION"
+            if step_index == len(experiment["steps"]) - 1:
+                run.update(status="COMPLETE", completed_at=now())
+            else:
+                run["step_index"] += 1
+                run["stage"] = "ACTION"
+            repo.put("run#" + run_id, run)
+            return run
+
+    @app.post("/api/runs/{run_id}/back/{step_index}")
+    def back(run_id: str, step_index: int, request: Request):
+        with locked(repo, "dataset"):
+            collecting()
+            run = owned_run(request, run_id)
+            if step_index != run["step_index"] or step_index <= 0:
+                raise HTTPException(409, "There is no previous fold to return to")
+            current = repo.get(f"sample#{run_id}-{step_index}")
+            if not current or current["status"] != "READY" or run["status"] != "ACTIVE":
+                raise HTTPException(409, "The current paper photo is not ready")
+            run["step_index"] -= 1
+            run["stage"] = "NEXT_PHOTO"
             repo.put("run#" + run_id, run)
             return run
 
@@ -317,7 +355,7 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
         return {"participants": repo.list("participant#"), "runs": len(repo.list("run#")),
                 "completed_runs": sum(r["status"] == "COMPLETE" for r in repo.list("run#")),
                 "samples": len(ready), "counts": dict(Counter(s["action_id"] for s in ready)),
-                "excluded": sum(s["excluded"] for s in samples), "control": repo.get("control") or {},
+                "excluded": sum(s["excluded"] and not s.get("final_state") for s in samples), "control": repo.get("control") or {},
                 "active": repo.get("active"), "fallback": repo.get("fallback")}
 
     @app.get("/api/samples")
@@ -342,6 +380,8 @@ def create_app(settings: Settings | None = None, encoder=None) -> FastAPI:
             sample = repo.get("sample#" + sample_id)
             if not sample:
                 raise HTTPException(404)
+            if sample.get("final_state"):
+                raise HTTPException(409, "Final airplane photos are not training samples")
             sample["excluded"] = not sample["excluded"]
             repo.put("sample#" + sample_id, sample)
         return sample

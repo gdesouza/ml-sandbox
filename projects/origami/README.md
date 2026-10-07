@@ -16,9 +16,9 @@ PYTHONPATH=. python scripts/verify_encoder.py
 uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8080
 ```
 
-Open <http://127.0.0.1:8080>. Local defaults: event code `ORIGAMI42`; presenter password `local-admin` at `/admin`. These are development defaults. Production rejects them. Local metadata is SQLite and images/models are files under `.local/`; a restart preserves both. No AWS credentials are needed locally.
+Open <http://127.0.0.1:8080>. Local defaults: event code `ORIGAMI42`; presenter password `local-admin` at `/admin`. These are development defaults. Production rejects them. For an event, set a short temporary participant code with `EVENT_CODE`; keep the presenter password strong and set it separately with `ADMIN_PASSWORD`. Local metadata is SQLite and images/models are files under `.local/`; a restart preserves both. No AWS credentials are needed locally.
 
-Common commands are available through `make`: `make venv` creates and installs the local environment, `source .venv/bin/activate` loads it into your shell, `make run` starts the local server, `make test` runs tests and checks the frontend JavaScript, and `make deploy` tests, builds, updates, and verifies an already provisioned ECS Express Mode deployment. Deployment requires the AWS CLI, Docker Buildx, valid AWS credentials, and deployment state under `.deploy/`.
+Common commands are available through `make`: `make test` prepares the test dependencies if needed and runs the Python and frontend tests; `make run` prepares the runtime and ML dependencies if needed and starts the local server. `make venv` installs both dependency groups, and `source .venv/bin/activate` loads the environment into your shell. Set `HOST` or `PORT` to override the run target defaults. `make deploy` tests, builds, updates, and verifies an already provisioned ECS Express Mode deployment. Deployment requires the AWS CLI, Docker Buildx, valid AWS credentials, and deployment state under `.deploy/`.
 
 The encoder smoke command downloads ImageNet weights on its first run. The Docker build performs that download ahead of deployment. Keep `TORCH_HOME` the same for the smoke command and server. CPU-only inference is used.
 
@@ -28,14 +28,14 @@ Use the **Language / Idioma** selector in the header to choose English or Portug
 
 ## Presentation workflow
 
-1. Use rectangular paper. Capture the current paper state, confirm upload, then perform the revealed action. Finish each action before advancing. A browser refresh preserves the current run; click **Start or resume**.
-2. Collect at least two training examples **per action**, plus a separate participant for held-out evaluation. Six participants doing one complete run produce 48 photos; holding one out leaves five training examples per action. This is a tiny educational dataset, not an accuracy guarantee.
+1. Use rectangular paper. Capture the current paper state. Upload starts automatically; follow the fold instruction, capture the resulting paper, then choose **Avançar**. Use **Voltar** to revisit the previous fold and replace its photo. A browser refresh preserves the current run; click **Start or resume**.
+2. Collect at least two training examples **per action**, plus a separate participant for held-out evaluation. Six participants doing one complete run produce 48 photos: 42 labeled action examples and six final airplane photos excluded from training. Holding one participant out leaves five training examples per action. This is a tiny educational dataset, not an accuracy guarantee.
 3. Open `/admin`. Review the gallery, exclude bad samples, choose a held-out participant, and click **Train model**. With only one participant, evaluation is explicitly marked training-only. Training currently requires every configured action to meet the minimum; partial runs are eligible only insofar as the combined dataset covers all actions.
 4. Inspect the metrics and try a new image. Probabilities are uncalibrated classifier scores, not assurances of correctness. The model has no `done` or `unknown` action.
 5. Before the talk, rehearse with real photos, verify a model, then **Mark as fallback**. The presenter can explicitly **Activate** it later. No real dataset or pretrained origami classifier is included in this repository.
 6. After the talk, delete the dataset manually in the admin panel. Models remain available. The cloud teardown guide also removes models and infrastructure.
 
-The eight-step airplane sequence in `config/experiment.yaml` is an initial candidate. Rehearse its instructions and camera orientation, particularly the last two wing steps, against the 5–10 minute budget. Dog-face instructions can be added later as a separate experiment. Use a new experiment ID when changing a sequence; config fingerprints reject mixing incompatible runs or models.
+The seven-fold airplane sequence in `config/experiment.yaml` follows the event handout. The current experiment ID is `airplane_02`, which starts a separate dataset and model namespace so prior photos and models are not mixed with the revised sequence. Rehearse the instructions and camera orientation against the 5–10 minute budget. Dog-face instructions can be added later as a separate experiment.
 
 ## AWS commands
 

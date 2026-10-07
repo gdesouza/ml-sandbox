@@ -36,6 +36,9 @@ async function boot() {
   const session = await api('/api/session');
   sessionParticipant = session.participant; localizeStatic();
   const adminPage = location.pathname.startsWith('/admin');
+  show('nav-participate', !session.participant && !session.admin);
+  show('nav-presenter', !session.participant && !session.admin);
+  show('leave', !!(session.participant || session.admin));
   for (const id of ['join','participant','admin-login','admin-panel']) show(id, false);
   if (adminPage) {
     show(session.admin ? 'admin-panel' : 'admin-login');
@@ -55,17 +58,26 @@ async function renderRun() {
   if (finished) return;
   const step = experiment.steps[run.step_index];
   const stage = run.stage || (run.sample?.status === 'READY' ? 'ACTION' : 'CURRENT_PHOTO');
-  $('step-label').textContent = t('step', {current:run.step_index + 1, total:experiment.steps.length});
-  $('step-progress').max = experiment.steps.length; $('step-progress').value = run.step_index;
+  const isFirstPhoto = stage === 'CURRENT_PHOTO';
+  $('step-label').textContent = isFirstPhoto
+    ? t('photoStep', {current:1, total:experiment.steps.length + 1})
+    : t('step', {current:run.step_index + 1, total:experiment.steps.length});
+  $('step-progress').max = isFirstPhoto ? experiment.steps.length + 1 : experiment.steps.length;
+  $('step-progress').value = isFirstPhoto ? 1 : run.step_index + 1;
   $('step-title').textContent = stepText(step, 'title');
   $('instruction-text').textContent = stepText(step, 'instruction');
-  const diagrams = {crease_center:'01', fold_left_corner:'02', fold_right_corner:'02', narrow_left_side:'03', narrow_right_side:'03', close_body:'04', fold_first_wing:'05', fold_second_wing:'06'};
-  $('instruction-image').src = `/static/instructions/How-to-Make-a-Paper-Airplane-${diagrams[step.action_id]}.jpg`;
+  $('instruction-image').src = `/static/instructions/${step.image}`;
   $('instruction-image').alt = t('Diagram for {action}', {action:stepText(step, 'title')});
   show('current-photo', stage === 'CURRENT_PHOTO');
   show('instruction', stage !== 'CURRENT_PHOTO');
-  show('confirm-action', stage === 'ACTION');
-  show('next-state', stage === 'NEXT_PHOTO');
+  show('next-state', stage !== 'CURRENT_PHOTO');
+  if (stage !== 'CURRENT_PHOTO') $('next-state-instruction').textContent =
+    run.step_index === experiment.steps.length - 1 ? t('Take a photo to finish this airplane.') : t('Now photograph the paper after this fold. This will be the starting state for the next fold.');
+  $('current-state-image').src = run.sample?.status === 'READY' ? `/api/samples/${run.sample.id}/image` : '';
+  show('current-state-image', !!(run.sample?.status === 'READY' && stage !== 'CURRENT_PHOTO'));
+  show('replace-current-photo', !!(run.sample?.status === 'READY' || run.sample?.replacement_pending));
+  show('replace-current-label', false);
+  show('back', run.step_index > 0 && stage !== 'CURRENT_PHOTO');
   $('photo').value = ''; $('upload').disabled = true; show('preview', false);
   if (nextPreviewURL) URL.revokeObjectURL(nextPreviewURL);
   nextPreviewURL = null;
@@ -73,6 +85,10 @@ async function renderRun() {
   const nextReady = run.next_sample?.status === 'READY';
   if (nextReady) $('next-preview').src = `/api/samples/${run.next_sample.id}/image`;
   show('next-preview', nextReady); show('advance', stage === 'NEXT_PHOTO' && nextReady);
+  show('replace-next-photo', nextReady || !!run.next_sample?.replacement_pending);
+  if (stage === 'NEXT_PHOTO' && nextReady) {
+    $('advance').textContent = t('Advance');
+  }
 }
 async function start() { run = await api('/api/runs', {method:'POST'}); await renderRun(); }
 form('join-form', '/api/session/join', async () => { await boot(); await start(); });
@@ -85,16 +101,33 @@ action('toggle-participant-inference', async () => {
   show('participant-inference', visible);
   $('toggle-participant-inference').setAttribute('aria-expanded', String(visible));
 });
-$('photo').addEventListener('change', () => {
+action('replace-current-photo', async () => show('replace-current-label'));
+action('replace-next-photo', async () => $('next-photo').click());
+$('photo').addEventListener('change', async () => {
   const file = $('photo').files[0]; $('upload').disabled = !file;
   if (previewURL) URL.revokeObjectURL(previewURL);
   if (file) { previewURL = URL.createObjectURL(file); $('preview').src = previewURL; }
   show('preview', !!file);
+  if (file) await uploadSample(file, run.step_index, run.sample?.status === 'READY').catch(async error => {
+    $('photo').value = ''; show('preview', false);
+    try { await renderRun(); } catch (_) {}
+    notice(error.message);
+  });
 });
-async function uploadSample(file, stepIndex) {
+$('replace-current-input').addEventListener('change', async () => {
+  const file = $('replace-current-input').files[0];
+  if (!file) return;
+  try { await uploadSample(file, run.step_index, true); }
+  catch (error) {
+    $('replace-current-input').value = '';
+    try { await renderRun(); } catch (_) {}
+    notice(error.message);
+  }
+});
+async function uploadSample(file, stepIndex, replace = false) {
   if (!file) throw new Error(t('Choose a photo first'));
   if (file.size > 10 * 1024 * 1024) throw new Error(t('Choose an image smaller than 10 MiB'));
-  const {sample, upload} = await api('/api/samples', {method:'POST', body:{run_id:run.id, step_index:stepIndex, content_type:file.type}});
+  const {sample, upload} = await api('/api/samples', {method:'POST', body:{run_id:run.id, step_index:stepIndex, content_type:file.type, replace}});
   if (upload) {
     let response;
     try {
@@ -115,25 +148,41 @@ async function uploadSample(file, stepIndex) {
   await renderRun();
 }
 action('upload', async () => { await uploadSample($('photo').files[0], run.step_index); });
-$('next-photo').addEventListener('change', () => {
+$('next-photo').addEventListener('change', async () => {
   const file = $('next-photo').files[0]; $('upload-next').disabled = !file;
   if (nextPreviewURL) URL.revokeObjectURL(nextPreviewURL);
   if (file) { nextPreviewURL = URL.createObjectURL(file); $('next-preview').src = nextPreviewURL; }
   show('next-preview', !!file);
+  if (file) {
+    try {
+      await uploadSample(file, run.step_index + 1, run.next_sample?.status === 'READY');
+    } catch (error) {
+      $('next-photo').value = '';
+      try { await renderRun(); } catch (_) {}
+      notice(error.message);
+    }
+  }
 });
-action('upload-next', async () => { await uploadSample($('next-photo').files[0], run.step_index + 1); });
-action('confirm-action', async () => { await api(`/api/runs/${run.id}/confirm/${run.step_index}`, {method:'POST'}); await renderRun(); });
-action('advance', async () => { await api(`/api/runs/${run.id}/advance/${run.step_index}`, {method:'POST'}); await renderRun(); });
+action('advance', async () => {
+  await api(`/api/runs/${run.id}/advance/${run.step_index}`, {method:'POST'});
+  await renderRun();
+});
+action('back', async () => { await api(`/api/runs/${run.id}/back/${run.step_index}`, {method:'POST'}); await renderRun(); });
 function gallery() {
   $('gallery').replaceChildren();
   for (const sample of samples.filter(s => s.status === 'READY' && (!$('filter').value || s.action_id === $('filter').value))) {
     const card = document.createElement('div');
-    const image = document.createElement('img'); image.src = `/api/samples/${sample.id}/image`; image.loading = 'lazy'; image.alt = t('photoBefore', {action:actionTitle(sample.action_id)});
+    const image = document.createElement('img'); image.src = `/api/samples/${sample.id}/image`; image.loading = 'lazy'; image.alt = sample.final_state ? t('Completed airplane') : t('photoBefore', {action:actionTitle(sample.action_id)});
     const name = participants.find(p => p.id === sample.participant_id)?.display_name || t('Participant');
-    card.append(image, text('p', t('gallery', {name, run:sample.run_id.slice(0,6), step:sample.step_index + 1, action:actionTitle(sample.action_id)})));
-    const button = text('button', sample.excluded ? t('Include sample') : t('Exclude sample'), 'secondary');
-    button.onclick = async () => { button.disabled = true; try { await api(`/api/samples/${sample.id}/exclude`, {method:'POST'}); await refresh(); } catch(error) { notice(error.message); button.disabled = false; } };
-    card.append(button); $('gallery').append(card);
+    card.append(image, text('p', sample.final_state
+      ? t('finalGallery', {name, run:sample.run_id.slice(0,6)})
+      : t('gallery', {name, run:sample.run_id.slice(0,6), step:sample.step_index + 1, action:actionTitle(sample.action_id)})));
+    if (!sample.final_state) {
+      const button = text('button', sample.excluded ? t('Include sample') : t('Exclude sample'), 'secondary');
+      button.onclick = async () => { button.disabled = true; try { await api(`/api/samples/${sample.id}/exclude`, {method:'POST'}); await refresh(); } catch(error) { notice(error.message); button.disabled = false; } };
+      card.append(button);
+    }
+    $('gallery').append(card);
   }
 }
 async function refresh() {

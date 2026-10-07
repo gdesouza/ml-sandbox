@@ -7,7 +7,8 @@
     "diff": "cdk diff",
     "deploy": "npm --prefix ../../web run build && cdk deploy",
     "pause": "npm --prefix ../../web run build && cdk deploy --context serviceEnabled=false",
-    "resume": "npm --prefix ../../web run build && cdk deploy --context serviceEnabled=true"
+    "resume": "npm --prefix ../../web run build && cdk deploy --context serviceEnabled=true",
+    "teardown": "cdk destroy"
   },
   "devDependencies": {
     "@types/node": "26.6.4",

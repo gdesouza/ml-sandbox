@@ -3,7 +3,7 @@ VENV := .venv
 VENV_PYTHON := $(VENV)/bin/python
 RUN_DIR := .local-run
 
-.PHONY: deploy run stop test venv
+.PHONY: deploy teardown run stop test venv
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -11,6 +11,15 @@ venv:
 
 deploy:
 	npm --prefix infra/cdk run deploy
+
+teardown:
+	@npm --prefix infra/cdk run teardown && { \
+	  printf '\nThe CDK stack was removed. These retained resources remain:\n'; \
+	  printf '  - Private S3 artifacts bucket (datasets and trained models): empty it, then delete it in AWS Console > S3.\n'; \
+	  printf '  - Cognito user pool (invited users): delete it in AWS Console > Amazon Cognito > User pools.\n'; \
+	  printf 'Use the BehaviorLabPilot CloudFormation stack outputs to identify their names/IDs before teardown.\n'; \
+	  printf 'The custom ACM certificate and DNS records are also external to the stack and remain.\n\n'; \
+	}
 
 run: venv
 	npm --prefix web ci

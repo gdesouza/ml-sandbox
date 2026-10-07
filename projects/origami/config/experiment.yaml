@@ -1,30 +1,34 @@
 experiment:
-  id: airplane_01
+  id: airplane_02
   name: Learn to fold a paper airplane
-  version: 1
+  version: 2
   introduction: Use rectangular Letter paper. Photograph the whole sheet on a contrasting surface before each action. Keep the nose pointing away from you. Allow 5–10 minutes.
 steps:
   - action_id: crease_center
+    image: airplane-step-02.jpg
     title: Make the centre crease
     instruction: Fold the sheet in half lengthwise, align the long edges, crease, then unfold. Keep the crease vertical.
-  - action_id: fold_left_corner
-    title: Fold the left corner
-    instruction: Bring the top-left corner inward until its top edge meets the centre crease.
-  - action_id: fold_right_corner
-    title: Fold the right corner
-    instruction: Bring the top-right corner inward until its top edge meets the centre crease. The top now forms a point.
-  - action_id: narrow_left_side
-    title: Narrow the left side
-    instruction: Fold the upper-left sloping edge inward to meet the centre crease.
-  - action_id: narrow_right_side
-    title: Narrow the right side
-    instruction: Fold the upper-right sloping edge inward to meet the centre crease.
-  - action_id: close_body
-    title: Close the airplane body
-    instruction: Fold the airplane in half along the centre crease, enclosing the previous folds. Lay it on its side with the nose pointing away from you.
-  - action_id: fold_first_wing
-    title: Fold the first wing
-    instruction: Fold the exposed wing down so its long sloping edge aligns with the bottom edge of the body. Leave this wing folded for the next photo.
-  - action_id: fold_second_wing
-    title: Finish the second wing
-    instruction: Turn the airplane over and fold the other wing to match. Open both wings slightly so the airplane is ready to fly.
+  - action_id: fold_top_corners
+    image: airplane-step-03.jpg
+    title: Fold the top corners
+    instruction: Fold both top corners until their edges meet the centre crease. The top becomes a triangle.
+  - action_id: fold_triangle_down
+    image: airplane-step-04.jpg
+    title: Fold the triangle down
+    instruction: Fold the top triangle down. The sheet should look like an envelope.
+  - action_id: fold_corners_again
+    image: airplane-step-05.jpg
+    title: Fold the corners again
+    instruction: Fold both top corners inward again until they meet the centre crease.
+  - action_id: fold_tip_up
+    image: airplane-step-06.jpg
+    title: Fold the tip up
+    instruction: Fold the small triangle at the bottom up over the folds to hold them in place.
+  - action_id: close_airplane
+    image: airplane-step-07.jpg
+    title: Close the airplane
+    instruction: Fold the airplane in half, opposite the original crease. Keep the small tip on the outside underneath.
+  - action_id: fold_wings
+    image: airplane-step-08.jpg
+    title: Fold the wings
+    instruction: Lay the airplane on its side and fold the top flap down until it lines up with the base. Turn it over and repeat. Crease firmly.

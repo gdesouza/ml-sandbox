@@ -9,8 +9,9 @@ from app.ml import normalize_image
 
 def test_config_and_production_secrets(monkeypatch):
     config = load_experiment(ROOT/'config/experiment.yaml')
-    assert len(config['steps']) == 8
-    assert len({s['action_id'] for s in config['steps']}) == 8
+    assert len(config['steps']) == 7
+    assert len({s['action_id'] for s in config['steps']}) == 7
+    assert all((ROOT/'app/static/instructions'/s['image']).is_file() for s in config['steps'])
     monkeypatch.setenv('APP_ENV','production')
     with pytest.raises(ValueError,match='Production requires'):
         Settings.from_env()

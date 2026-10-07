@@ -34,7 +34,7 @@ test: $(VENV)/.test-deps
 	@$(VENV_PYTHON) -c 'import pytest' || $(VENV_PYTHON) -m pip install -e '.[test]'
 	$(VENV_PYTHON) -m pytest -q
 	node --check app/static/app.js
-	node --test tests/test_upload_frontend.cjs
+	node --test tests/test_*_frontend.cjs
 
 deploy: test
 	bash scripts/deploy.sh

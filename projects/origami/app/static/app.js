@@ -253,7 +253,17 @@ function renderPrediction(outputId, result = lastPrediction) {
   $(outputId).replaceChildren(text('h3',actionTitle(result.prediction.action_id)), text('p',t('predictionModel', {source:t(result.source), id:result.model_version})));
   for (const item of result.probabilities) {
     const row = text('div','', 'probability'); const bar = document.createElement('meter'); bar.min=0; bar.max=1; bar.value=item.probability; bar.setAttribute('aria-label',actionTitle(item.action_id));
-    row.append(text('label', `${actionTitle(item.action_id)} — ${(item.probability*100).toFixed(1)}%`), bar); $(outputId).append(row);
+    const step = experiment.steps.find(step => step.action_id === item.action_id);
+    if (step?.image) {
+      const image = document.createElement('img');
+      image.className = 'prediction-reference';
+      image.src = `/static/instructions/${step.image}`;
+      image.alt = t('Diagram for {action}', {action:actionTitle(item.action_id)});
+      row.append(image);
+    }
+    const details = text('div', '', 'probability-details');
+    details.append(text('label', `${actionTitle(item.action_id)} — ${(item.probability*100).toFixed(1)}%`), bar);
+    row.append(details); $(outputId).append(row);
   }
 }
 action('predict', async () => { await predictFrom('inference-photo', 'prediction'); });

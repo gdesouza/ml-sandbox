@@ -6,3 +6,4 @@
 
 .participant-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.participant-actions button{margin-right:0}
 .photo-replace{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;margin-top:0}.photo-replace span[aria-hidden="true"]{font-size:18px;line-height:1}
+.probability{display:flex;align-items:center;gap:12px;min-width:0}.prediction-reference{width:min(64px,18vw);height:52px;flex:0 1 64px;min-width:0;object-fit:contain;border:1px solid #e5eaf0;border-radius:6px;background:#eef2f7}.probability-details{flex:1;min-width:0}.probability-details label{overflow-wrap:anywhere}@media(max-width:480px){.prediction-reference{width:48px;height:42px;flex-basis:48px}.probability{gap:8px}}
